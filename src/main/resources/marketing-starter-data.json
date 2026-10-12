@@ -1,0 +1,278 @@
+{
+   "about": "Starter data for the Marketing QBit: three products with evidence verified on 2026-10-12, and one or two honest starter campaigns each. Every claim cites its source; disagreements between sources are recorded as Disputed claims for review, not resolved in favour of the more promotional source. Campaigns start as Draft. No results, customers or testimonials are included.",
+   "verifiedDate": "2026-10-12",
+   "verifiedBy": "marketing research (qbit-marketing bootstrap)",
+
+   "channels": [
+      {
+         "name": "Controlled test sink",
+         "channelType": "TEST_SINK",
+         "transportName": "controlled_test",
+         "isActive": true,
+         "allowsAutomation": true,
+         "aiContentPolicy": "ALLOWED",
+         "rulesSummary": "Internal test channel. Executions are stored in Marketing Test Deliveries and never leave the application; their outcomes are reported as test data.",
+         "rulesVerifiedDate": "2026-10-12",
+         "maxRecipientsPerExecution": 50
+      },
+      {
+         "name": "Email to opted-in CRM list",
+         "channelType": "EMAIL",
+         "transportName": "qqq_email",
+         "isActive": true,
+         "allowsAutomation": true,
+         "aiContentPolicy": "UNKNOWN",
+         "rulesSummary": "Only CRM contacts who are subscribed to the chosen list and have current email consent; one message per recipient; at most 50 recipients per execution. Record the team's policy on AI-assisted email before approving agent drafts here.",
+         "rateLimitPerHour": 50,
+         "maxRecipientsPerExecution": 50
+      },
+      {
+         "name": "Project blog (posted by hand)",
+         "channelType": "BLOG",
+         "isActive": true,
+         "allowsAutomation": false,
+         "aiContentPolicy": "UNKNOWN",
+         "rulesSummary": "Our own site. No publishing connector is configured: approved posts are published by a person. Record the team's policy on AI-assisted posts."
+      },
+      {
+         "name": "GitHub release notes (posted by hand)",
+         "channelType": "RELEASE_NOTES",
+         "isActive": true,
+         "allowsAutomation": false,
+         "aiContentPolicy": "UNKNOWN",
+         "rulesSummary": "Release notes on the product's GitHub releases page, written and published by a maintainer. No connector is configured."
+      }
+   ],
+
+   "policy": {
+      "name": "default",
+      "agentEnabled": true,
+      "executionEnabled": true,
+      "dailyTokenLimit": 1000000,
+      "maxConcurrentAgentRuns": 2,
+      "maxToolCallsPerRun": 24
+   },
+
+   "products": [
+      {
+         "product": {
+            "name": "QQQ",
+            "slug": "qqq",
+            "tagline": "Metadata-driven application framework for building business software in Java.",
+            "summary": "QQQ (by QRunIO) defines tables, fields, relationships, apps and processes in Java metadata and serves them through a metadata-driven dashboard, REST API, CLI and Lambda handlers from the same codebase. The stable release is QQQ 4.0.0 (GA, 2026-09-24, Apache-2.0, on Maven Central); 4.1 is in release candidates. qRun hosting, qStudio and production qBits are previews or planned.",
+            "maturity": "RELEASED",
+            "readinessNotes": "Ready for adoption marketing of the framework (4.0.0 GA). Present 4.1 as a release candidate and qRun / qStudio / production qBits as previews or planned. Open discrepancies: the website's share titles still say \"QQQ 4.0 Preview\" and its framework card says \"release candidate\" while GitHub marks 4.0.0 GA; fix before campaigns. Maven Central's latest/release fields point at an RC.",
+            "primaryUrl": "https://www.qrun.io",
+            "repositoryUrl": "https://github.com/QRun-IO/qqq",
+            "documentationUrl": "https://www.qrun.io/docs",
+            "releasesUrl": "https://github.com/QRun-IO/qqq/releases",
+            "license": "Apache-2.0 (repository LICENSE)",
+            "platforms": "Java 21 (JDK 21+). 4.0 quickstart: macOS, Linux or Windows WSL with Bash, Docker, Git, curl, unzip.",
+            "latestRelease": "4.0.0 (GA, 2026-09-24); 4.1.0-RC.4 pre-release (2026-10-12)",
+            "adoptionPath": "From https://www.qrun.io/try: install Java 21 JDK, Git, curl, unzip, Bash and a running Docker daemon; download quickstart.sh from the signed tag quickstart-4.0.0; run bash quickstart.sh (it builds the sample against QQQ 4.0.0 and starts the Next dashboard preview); open http://localhost:3000/app/person (mock auth, synthetic data); edit the Java under qqq-sample-project and re-run. For your own app, import com.kingsrook.qqq:qqq-bom-pom:4.0.0.",
+            "valuePropositions": "Define tables, fields, relationships, apps and processes in Java instead of hand-writing table views, forms, CRUD, permissions, reports and scheduled jobs (README). Self-hosted, Apache-2.0, published on Maven Central without GitHub Packages credentials.",
+            "lastVerifiedDate": "2026-10-12"
+         },
+         "sources": [
+            { "ref": "qqq-home", "title": "qrun.io home page", "url": "https://www.qrun.io", "sourceType": "WEBSITE", "publisher": "QRunIO", "excerpt": "Build data applications with QQQ 4.0 ... Java metadata. Reusable application behavior." },
+            { "ref": "qqq-try", "title": "qrun.io Try QQQ", "url": "https://www.qrun.io/try", "sourceType": "DOCUMENTATION", "publisher": "QRunIO", "excerpt": "no Maven or Node.js installation, manual database setup, or account is needed." },
+            { "ref": "qqq-install", "title": "QQQ installation docs", "url": "https://www.qrun.io/docs/getting-started/installation", "sourceType": "DOCUMENTATION", "publisher": "QRunIO", "excerpt": "Maven Central supplies these artifacts without GitHub Packages credentials." },
+            { "ref": "qqq-release-400", "title": "QQQ v4.0.0 release notes", "url": "https://github.com/QRun-IO/qqq/releases/tag/v4.0.0", "sourceType": "RELEASE", "publisher": "QRun-IO on GitHub", "excerpt": "QQQ 4.0.0 establishes the framework's semantic-versioning contract on Java 21." },
+            { "ref": "qqq-readme", "title": "QQQ repository README (develop)", "url": "https://github.com/QRun-IO/qqq", "sourceType": "REPOSITORY", "publisher": "QRun-IO on GitHub", "excerpt": "Metadata-driven application framework for building business software in Java." },
+            { "ref": "qqq-maven", "title": "Maven Central: qqq-backend-core metadata", "url": "https://repo1.maven.org/maven2/com/kingsrook/qqq/qqq-backend-core/maven-metadata.xml", "sourceType": "PACKAGE_REGISTRY", "publisher": "Maven Central", "excerpt": "latest and release: 4.1.0-RC.4; 4.0.0 present." },
+            { "ref": "qqq-pricing", "title": "qrun.io pricing", "url": "https://www.qrun.io/pricing", "sourceType": "WEBSITE", "publisher": "QRunIO", "excerpt": "qRun is a planned managed hosting offering; it is not required for QQQ 4.0. The framework release itself does not include a support SLA." },
+            { "ref": "qqq-licensing", "title": "qrun.io licensing", "url": "https://www.qrun.io/licensing", "sourceType": "WEBSITE", "publisher": "QRunIO", "excerpt": "A website summary does not replace them." }
+         ],
+         "claims": [
+            { "source": "qqq-release-400", "category": "release", "status": "RELEASED", "claimText": "QQQ 4.0.0 is a stable (GA) release, published 2026-09-24, the first under a semantic-versioning contract.", "evidenceQuote": "QQQ 4.0.0 establishes the framework's semantic-versioning contract on Java 21." },
+            { "source": "qqq-home", "category": "capability", "status": "RELEASED", "claimText": "Applications are defined in Java metadata: tables, fields, relationships, apps and processes.", "evidenceQuote": "Define tables, fields, relationships, apps, and processes in Java. Manage the database schema explicitly." },
+            { "source": "qqq-home", "category": "capability", "status": "RELEASED", "claimText": "Backend modules exist for relational databases, MongoDB, SQLite, the file system, S3 and REST; supported operations vary by backend.", "evidenceQuote": "Use relational, MongoDB, SQLite, file-system, S3, or REST modules. Supported operations vary by backend." },
+            { "source": "qqq-readme", "category": "capability", "status": "RELEASED", "claimText": "One codebase serves a REST API, a CLI and Lambda handlers.", "evidenceQuote": "Multiple interfaces - REST API, CLI, Lambda handlers from same codebase" },
+            { "source": "qqq-release-400", "category": "capability", "status": "RELEASED", "claimText": "For 4.0 the standard dashboard is Material 0.41.0; the Next dashboard is a compatible preview.", "evidenceQuote": "Standard dashboard: Material 0.41.0 ... Next remains a compatible preview; widget parity is tracked in #550." },
+            { "source": "qqq-try", "category": "adoption", "status": "RELEASED", "claimText": "The quickstart needs no Maven or Node.js install, no manual database setup and no account (Java 21, Git, curl, unzip, Bash and Docker are required).", "evidenceQuote": "no Maven or Node.js installation, manual database setup, or account is needed." },
+            { "source": "qqq-try", "category": "adoption", "status": "RELEASED", "claimText": "90 seconds to a usable local app is a target, not a guarantee; one published cold-start check took 43.6 seconds on a specific VM.", "evidenceQuote": "90 seconds is a target, not a guarantee." },
+            { "source": "qqq-install", "category": "adoption", "status": "RELEASED", "claimText": "QQQ artifacts are on Maven Central and need no GitHub Packages credentials.", "evidenceQuote": "Maven Central supplies these artifacts without GitHub Packages credentials." },
+            { "source": "qqq-home", "category": "scope", "status": "PLANNED", "claimText": "Automatic GraphQL generation is not part of this release.", "evidenceQuote": "Automatic GraphQL generation is outside this release scope." },
+            { "source": "qqq-pricing", "category": "offering", "status": "PLANNED", "claimText": "qRun managed hosting is planned / a preview, not generally available.", "evidenceQuote": "qRun is a planned managed hosting offering; it is not required for QQQ 4.0." },
+            { "source": "qqq-home", "category": "offering", "status": "PLANNED", "claimText": "qStudio and production business qBits are previews, outside the 4.0 release gate.", "evidenceQuote": "qStudio is an optional product preview and is not part of the QQQ 4.0 release gate." },
+            { "source": "qqq-pricing", "category": "support", "status": "RELEASED", "claimText": "The framework release includes no support SLA; enterprise support is by negotiation.", "evidenceQuote": "The framework release itself does not include a support SLA." },
+            { "source": "qqq-release-400", "category": "limitations", "status": "RELEASED", "claimText": "Known limitations are open: 154 deferred items, and Next widget parity is not complete.", "evidenceQuote": "All 154 known deferred items have individual prioritized issues linked from #534" },
+            { "source": "qqq-home", "category": "release", "status": "DISPUTED", "claimText": "QQQ 4.0 is generally available.", "evidenceQuote": "QQQ 4.0 is available", "discrepancyNote": "GitHub marks v4.0.0 as GA (not a pre-release) and the home banner says \"QQQ 4.0 is available\", but the same page's framework card says \"QQQ 4.0 release candidate\" and the site-wide og:title is \"QQQ 4.0 Preview\" (\"Explore the QQQ 4.0 candidate\"). Fix the site before stating GA in campaigns." },
+            { "source": "qqq-readme", "category": "capability", "status": "DISPUTED", "claimText": "The Next dashboard is served by default.", "evidenceQuote": "the Next dashboard is served by default; the Material Dashboard remains an explicit option", "discrepancyNote": "The develop README (4.1 RC) says Next is the default; the 4.0.0 release notes call Material 0.41.0 the standard dashboard and Next a compatible preview; /try uses Next but calls it a preview." },
+            { "source": "qqq-licensing", "category": "license", "status": "DISPUTED", "claimText": "QQQ is licensed under Apache-2.0.", "evidenceQuote": "A website summary does not replace them.", "discrepancyNote": "The repository LICENSE is Apache-2.0, but the website never names the license and asks readers to review each release's LICENSE and NOTICE. State the license with a link to the repository LICENSE." }
+         ],
+         "audiences": [
+            { "ref": "qqq-java-engineers", "name": "Java engineers building internal tools and data apps", "problem": "Building business applications means writing the same patterns repeatedly: table views, forms, CRUD operations, user permissions, reports, scheduled jobs. (README)", "usefulTask": "Get a working app with tables, permissions and processes from Java metadata, starting from the 4.0 quickstart, then add a first table of their own.", "evidenceNote": "Audience and problem quoted from the repository README (\"Engineers building internal tools, admin panels, data management apps, or CRUD-heavy systems\"). That they already own their infrastructure is an inference from the self-hosted positioning." }
+         ],
+         "campaigns": [
+            {
+               "name": "QQQ 4.0: from quickstart to your first table",
+               "goal": "OPEN_SOURCE_ADOPTION",
+               "status": "DRAFT",
+               "audience": "qqq-java-engineers",
+               "objective": "Java engineers complete the QQQ 4.0 quickstart and then define a first table of their own.",
+               "problem": "Rewriting table views, forms, CRUD, permissions and jobs for every internal app.",
+               "messaging": "A practical tutorial, not a pitch: what the quickstart needs (Java 21, Docker, Bash), what you get (a running sample with the Next dashboard preview), and the next step (your own table). Truthful about previews and the 90-second target.",
+               "channelPlan": "1) Tutorial post on the project blog (posted by hand). 2) A short note to opted-in newsletter subscribers in the CRM (consent required). Test every message on the controlled test sink first.",
+               "callToAction": "Run the QQQ 4.0 quickstart",
+               "destinationUrl": "https://www.qrun.io/try",
+               "utmCampaign": "qqq-40-quickstart",
+               "successCriteria": "Activation: developers who complete the quickstart and build a first table (needs instrumentation - not measured yet). Awareness: visits to /try from this campaign (needs analytics). Delivery is tracked but is not reach.",
+               "leadQualificationEnabled": false,
+               "metrics": [
+                  { "stage": "DELIVERY", "name": "Messages accepted by the provider", "eventType": "provider_accepted", "countMode": "RAW_EVENTS", "instrumentationStatus": "INSTRUMENTED", "notes": "Recorded by Marketing when a transport accepts a request; not delivery or engagement." },
+                  { "stage": "AWARENESS", "name": "Visits to /try from the campaign", "eventType": "try_page_visit", "countMode": "UNIQUE_ACTORS", "instrumentationStatus": "NOT_INSTRUMENTED", "notes": "Needs UTM-aware site analytics feeding outcome events." },
+                  { "stage": "ACTIVATION", "name": "Quickstart completed", "eventType": "quickstart_completed", "countMode": "UNIQUE_ACTORS", "instrumentationStatus": "NOT_INSTRUMENTED", "notes": "The quickstart has no telemetry; only self-reported or surveyed." },
+                  { "stage": "REPEAT_USE", "name": "Built a second app or table", "eventType": "second_build", "countMode": "UNIQUE_ACTORS", "instrumentationStatus": "NOT_INSTRUMENTED" }
+               ]
+            },
+            {
+               "name": "QQQ support inquiries",
+               "goal": "COMMERCIAL_DEMAND",
+               "status": "DRAFT",
+               "audience": "qqq-java-engineers",
+               "objective": "Teams adopting QQQ who need help ask about negotiated support through the qrun.io contact form.",
+               "problem": "Teams that adopt an open-source framework for business apps may need help beyond the docs; the framework release includes no support SLA.",
+               "messaging": "Factual: QQQ is Apache-2.0 and free; the release has no SLA; enterprise support is by negotiation. No promises of response times.",
+               "channelPlan": "One note to opted-in CRM newsletter subscribers; a line in release notes (by hand).",
+               "callToAction": "Ask about QQQ support",
+               "destinationUrl": "https://www.qrun.io/pricing",
+               "utmCampaign": "qqq-support-inquiry",
+               "successCriteria": "Qualified demand: contacts who submit the contact form from this campaign and have email consent (explicit rule below). Visits and newsletter opens are not leads.",
+               "leadQualificationEnabled": true,
+               "qualifyMinFormSubmissions": 1,
+               "qualifyRequireEmailConsent": true,
+               "leadQualificationNote": "A contact is a marketing-qualified lead when at least one contact-form submission is attributed to UTM campaign qqq-support-inquiry and the contact has current email consent.",
+               "metrics": [
+                  { "stage": "DELIVERY", "name": "Messages accepted by the provider", "eventType": "provider_accepted", "countMode": "RAW_EVENTS", "instrumentationStatus": "INSTRUMENTED" },
+                  { "stage": "ENGAGEMENT", "name": "Contact-form submissions (CRM)", "eventType": "crm_form_submission", "countMode": "UNIQUE_ACTORS", "instrumentationStatus": "INSTRUMENTED", "notes": "Imported from the CRM by Update Results from CRM (UTM campaign)." },
+                  { "stage": "QUALIFIED_DEMAND", "name": "Marketing-qualified leads", "eventType": "marketing_qualified_lead", "countMode": "UNIQUE_ACTORS", "instrumentationStatus": "INSTRUMENTED", "notes": "Only by the campaign's explicit rule." }
+               ]
+            }
+         ]
+      },
+      {
+         "product": {
+            "name": "gclo",
+            "slug": "gclo",
+            "tagline": "Clone an entire GitHub organization. Keep it up to date. In parallel.",
+            "summary": "gclo (Git Clone Large Organizations) mirrors every repository of a GitHub organization or user account into a local folder in one pass: it clones what is missing and fast-forwards what exists, with live per-repo progress and bounded parallelism. It ships as a Windows 11 desktop app (WinUI 3) and a scriptable CLI on the same engine. MIT licensed.",
+            "maturity": "RELEASED",
+            "readinessNotes": "Ready for adoption marketing on Windows 11 x64 only (GitHub Releases: Setup, Portable, CLI zip; Scoop). Do not advertise winget (PR #450621 open), Chocolatey (1.0.1 unapproved), Homebrew, macOS or Linux binaries. Young product: two stable releases; 1.0.1 was a pulled crash release.",
+            "primaryUrl": "https://github.com/KofTwentyTwo/gclo",
+            "repositoryUrl": "https://github.com/KofTwentyTwo/gclo",
+            "documentationUrl": "https://github.com/KofTwentyTwo/gclo#readme",
+            "releasesUrl": "https://github.com/KofTwentyTwo/gclo/releases",
+            "license": "MIT",
+            "platforms": "Windows 11 x64 (desktop app and self-contained CLI). The CLI builds from source on Linux/macOS with the .NET 10 SDK; no non-Windows binaries are published.",
+            "latestRelease": "1.1.0 (2026-10-11)",
+            "adoptionPath": "Create a GitHub token (classic repo scope, optionally read:org; or fine-grained repo read). GUI: run gclo-stable-Setup.exe from Releases (per-user, no admin) or the portable zip; paste the token, pick the org, choose a folder, set parallelism, Load repos, Sync selected. CLI: unzip gclo-cli-win-x64-<version>.zip or scoop install gclo, set GITHUB_TOKEN, run gclo sync --org <name> --target <folder>.",
+            "valuePropositions": "One pass clones the missing repositories and fast-forwards the existing ones, in parallel, with per-repo failure isolation; tokens stay in Windows Credential Manager; the CLI scripts the same engine.",
+            "lastVerifiedDate": "2026-10-12"
+         },
+         "sources": [
+            { "ref": "gclo-readme", "title": "gclo README", "url": "https://github.com/KofTwentyTwo/gclo", "sourceType": "REPOSITORY", "publisher": "KofTwentyTwo on GitHub", "excerpt": "Clone an entire GitHub organization. Keep it up to date. In parallel." },
+            { "ref": "gclo-release-110", "title": "gclo v1.1.0 release", "url": "https://github.com/KofTwentyTwo/gclo/releases", "sourceType": "RELEASE", "publisher": "KofTwentyTwo on GitHub", "excerpt": "1.1.0, 2026-10-11, not a pre-release: Setup.exe, Portable.zip, CLI zip, SBOMs, SHA256SUMS." },
+            { "ref": "gclo-cli-docs", "title": "gclo CLI documentation", "url": "https://github.com/KofTwentyTwo/gclo/blob/main/docs/CLI.md", "sourceType": "DOCUMENTATION", "publisher": "KofTwentyTwo on GitHub", "excerpt": "also builds and runs on Linux/macOS hosts with the .NET 10 SDK" },
+            { "ref": "gclo-choco", "title": "Chocolatey package page", "url": "https://community.chocolatey.org/packages/gclo", "sourceType": "PACKAGE_REGISTRY", "publisher": "Chocolatey Community", "excerpt": "This version is in moderation and has not yet been approved. (1.0.1)" },
+            { "ref": "gclo-winget", "title": "winget-pkgs PR #450621", "url": "https://github.com/microsoft/winget-pkgs/pull/450621", "sourceType": "PACKAGE_REGISTRY", "publisher": "microsoft/winget-pkgs", "excerpt": "New package: KofTwentyTwo.gclo version 1.1.0 (open)" }
+         ],
+         "claims": [
+            { "source": "gclo-readme", "category": "capability", "status": "RELEASED", "claimText": "Clones missing repositories and fast-forwards existing ones for a GitHub organization or user account in one pass, with bounded parallelism.", "evidenceQuote": "it clones the repositories that are missing and fast-forwards the ones that already exist, with live per-repo progress and bounded parallelism." },
+            { "source": "gclo-readme", "category": "platform", "status": "RELEASED", "claimText": "Ships as a Windows 11 desktop app (WinUI 3) and a scriptable CLI built on the same engine.", "evidenceQuote": "It ships as a Windows 11 desktop app (WinUI 3) and a scriptable CLI built on the same engine." },
+            { "source": "gclo-readme", "category": "install", "status": "RELEASED", "claimText": "The installer is per-user (no admin rights) and the app updates itself.", "evidenceQuote": "It installs per-user (no admin rights needed) and updates itself in-app via Help > Check for updates." },
+            { "source": "gclo-readme", "category": "install", "status": "RELEASED", "claimText": "The CLI is a self-contained gclo.exe; no .NET runtime is required.", "evidenceQuote": "It is a self-contained single gclo.exe — no .NET runtime required." },
+            { "source": "gclo-readme", "category": "security", "status": "RELEASED", "claimText": "Tokens are kept in Windows Credential Manager, never in settings files or logs; the CLI has no --token argument.", "evidenceQuote": "There is deliberately no --token <value> option" },
+            { "source": "gclo-readme", "category": "reliability", "status": "RELEASED", "claimText": "Failures are isolated per repository; one broken repository never stops the rest.", "evidenceQuote": "failures are isolated per repository — one broken repo never stops the rest" },
+            { "source": "gclo-release-110", "category": "release", "status": "RELEASED", "claimText": "gclo 1.1.0 was released on 2026-10-11 with an installer, a portable zip and a CLI zip, SBOMs and SHA256SUMS.", "evidenceQuote": "gclo-stable-Setup.exe, gclo-stable-Portable.zip, gclo-cli-win-x64-1.1.0.zip, CycloneDX SBOMs, SHA256SUMS" },
+            { "source": "gclo-winget", "category": "install", "status": "PLANNED", "claimText": "gclo can be installed with winget.", "evidenceQuote": "New package: KofTwentyTwo.gclo version 1.1.0 (PR open)" },
+            { "source": "gclo-cli-docs", "category": "platform", "status": "PLANNED", "claimText": "gclo binaries for macOS and Linux.", "evidenceQuote": "also builds and runs on Linux/macOS hosts with the .NET 10 SDK (source only; no binaries published)" },
+            { "source": "gclo-choco", "category": "install", "status": "DISPUTED", "claimText": "gclo can be installed with Chocolatey.", "evidenceQuote": "This version is in moderation and has not yet been approved.", "discrepancyNote": "The README lists Chocolatey as a package manager, but the Chocolatey listing shows only 1.0.1, still unapproved and waiting for maintainer action, while the current version is 1.1.0." }
+         ],
+         "audiences": [
+            { "ref": "gclo-org-maintainers", "name": "People who keep local clones of a whole GitHub organization", "problem": "Keeping local copies of every repository in a GitHub organization or account current means cloning and pulling repo by repo.", "usefulTask": "Mirror an organization into one folder and keep it current, by hand or from a scheduled job.", "evidenceNote": "Need and scheduled use quoted from the README. That they are Windows developers, DevOps or platform engineers doing backups, migrations or code search is an inference." }
+         ],
+         "campaigns": [
+            {
+               "name": "gclo 1.1 for Windows: mirror a whole GitHub org",
+               "goal": "OPEN_SOURCE_ADOPTION",
+               "status": "DRAFT",
+               "audience": "gclo-org-maintainers",
+               "objective": "Windows 11 users who manage many repositories install gclo 1.1.0 and complete a first org sync.",
+               "problem": "Cloning and updating dozens of repositories one by one.",
+               "messaging": "Show the task end to end (token, org, folder, sync) on Windows 11; mention the CLI for scheduled jobs. Do not mention winget, Chocolatey, macOS or Linux binaries as available.",
+               "channelPlan": "1) Release notes for 1.1.0 (by hand). 2) A how-to post on the project blog (by hand). Test every message on the controlled test sink first.",
+               "callToAction": "Download gclo 1.1.0 for Windows 11",
+               "destinationUrl": "https://github.com/KofTwentyTwo/gclo/releases/latest",
+               "utmCampaign": "gclo-110-windows",
+               "successCriteria": "Activation: first successful org sync (no telemetry - only feedback can show it). Downloads are interest, not adoption.",
+               "leadQualificationEnabled": false,
+               "metrics": [
+                  { "stage": "DELIVERY", "name": "Messages accepted by the provider", "eventType": "provider_accepted", "countMode": "RAW_EVENTS", "instrumentationStatus": "INSTRUMENTED" },
+                  { "stage": "AWARENESS", "name": "Release asset downloads", "eventType": "release_download", "countMode": "RAW_EVENTS", "instrumentationStatus": "NOT_INSTRUMENTED", "notes": "GitHub reports download counts, but no importer is configured; downloads are not adoption." },
+                  { "stage": "ACTIVATION", "name": "First successful org sync", "eventType": "first_org_sync", "countMode": "UNIQUE_ACTORS", "instrumentationStatus": "NOT_INSTRUMENTED", "notes": "gclo has no telemetry." }
+               ]
+            }
+         ]
+      },
+      {
+         "product": {
+            "name": "MarkdownViewr for Windows",
+            "slug": "markdownviewr-windows",
+            "tagline": "A dedicated Windows reader for project documentation, notes, and README files.",
+            "summary": "MarkdownViewr for Windows (repository MarkdownViewr.Windows, MIT) is a Windows Markdown reader with live reload, themes, highlighted source, navigation, printing and PDF export. It is a separate product from the macOS markdownViewr. It has no public release yet.",
+            "maturity": "PRELAUNCH",
+            "readinessNotes": "PRELAUNCH: no GitHub release, no installers, no winget or Store listing; tags v1.0.0 and v1.0.0-beta.1 exist but both release workflow runs failed at startup on 2026-10-12, and the README says no downloads exist yet. Use tester-interest messaging only until a stable Setup is published and checked. Do not conflate with the macOS markdownViewr.",
+            "primaryUrl": "https://github.com/KofTwentyTwo/MarkdownViewr.Windows",
+            "repositoryUrl": "https://github.com/KofTwentyTwo/MarkdownViewr.Windows",
+            "documentationUrl": "https://github.com/KofTwentyTwo/MarkdownViewr.Windows/blob/main/docs/user-guide.md",
+            "releasesUrl": "https://github.com/KofTwentyTwo/MarkdownViewr.Windows/releases",
+            "license": "MIT",
+            "platforms": "Planned: Windows 10 1809+ and Windows 11, x64, with the WebView2 runtime (no packages published yet).",
+            "latestRelease": "None published (tags exist; release runs failed 2026-10-12)",
+            "adoptionPath": "Not possible yet: there are no published downloads. Interested testers can watch the repository and use its Discussions.",
+            "valuePropositions": "Planned (unreleased): read Markdown comfortably, follow live changes, and print or export to PDF.",
+            "lastVerifiedDate": "2026-10-12"
+         },
+         "sources": [
+            { "ref": "mdv-readme", "title": "MarkdownViewr.Windows README", "url": "https://github.com/KofTwentyTwo/MarkdownViewr.Windows", "sourceType": "REPOSITORY", "publisher": "KofTwentyTwo on GitHub", "excerpt": "The first Windows release is being prepared. There are no published Windows downloads yet" },
+            { "ref": "mdv-releases", "title": "MarkdownViewr.Windows releases page", "url": "https://github.com/KofTwentyTwo/MarkdownViewr.Windows/releases", "sourceType": "RELEASE", "publisher": "KofTwentyTwo on GitHub", "excerpt": "No releases (tags v1.0.0 and v1.0.0-beta.1 exist; release runs ended in startup_failure on 2026-10-12)." },
+            { "ref": "mdv-guide", "title": "MarkdownViewr user guide", "url": "https://github.com/KofTwentyTwo/MarkdownViewr.Windows/blob/main/docs/user-guide.md", "sourceType": "DOCUMENTATION", "publisher": "KofTwentyTwo on GitHub" }
+         ],
+         "claims": [
+            { "source": "mdv-readme", "category": "release", "status": "RELEASED", "claimText": "There are no published Windows downloads yet; the first release is being prepared.", "evidenceQuote": "The first Windows release is being prepared. There are no published Windows downloads yet" },
+            { "source": "mdv-readme", "category": "capability", "status": "PLANNED", "claimText": "20 document palettes, custom typography, and light, dark or system appearance.", "evidenceQuote": "Choose from 20 document palettes, customize typography, and use a light, dark, or system app appearance." },
+            { "source": "mdv-readme", "category": "capability", "status": "PLANNED", "claimText": "Saved edits refresh automatically (live reload).", "evidenceQuote": "Saved edits refresh automatically." },
+            { "source": "mdv-readme", "category": "capability", "status": "PLANNED", "claimText": "Contents navigation, heading jumps, collapsible sections and find.", "evidenceQuote": "Show Contents, jump between headings, collapse sections, and find text." },
+            { "source": "mdv-readme", "category": "capability", "status": "PLANNED", "claimText": "Print, and save PDFs with separate print styling.", "evidenceQuote": "Print from the toolbar or save a PDF with separate print styling" },
+            { "source": "mdv-readme", "category": "platform", "status": "PLANNED", "claimText": "Supports Windows 10 1809+ and Windows 11 x64 (WebView2 required).", "evidenceQuote": "The planned Windows packages support Windows 10 version 1809 or later and Windows 11, x64." },
+            { "source": "mdv-readme", "category": "technology", "status": "DISPUTED", "claimText": "Built with AppKit and WinUI 3.", "evidenceQuote": "built with AppKit and WinUI 3", "discrepancyNote": "The project files are WinUI 3 on .NET 10; AppKit is a macOS framework used only by an icon-generation tool. Do not repeat this wording." },
+            { "source": "mdv-releases", "category": "release", "status": "DISPUTED", "claimText": "Version 1.0.0 is released.", "evidenceQuote": "Tags v1.0.0 and v1.0.0-beta.1 exist; no GitHub Release; release runs failed at startup.", "discrepancyNote": "A tag is not a release: there is no GitHub Release or installer, and the README says there are no downloads." }
+         ],
+         "audiences": [
+            { "ref": "mdv-windows-readers", "name": "Windows users who read Markdown documentation and READMEs", "problem": "Reading project documentation, notes and README files on Windows without a dedicated reader.", "usefulTask": "Open a Markdown file, read it comfortably and keep it current while it is edited elsewhere (once released).", "evidenceNote": "Audience from the README's own description (\"a dedicated Windows reader for project documentation, notes, and README files\"); the editor-alongside use is an inference from the live-reload feature." }
+         ],
+         "campaigns": [
+            {
+               "name": "MarkdownViewr for Windows: early testers",
+               "goal": "PRELAUNCH_RESEARCH",
+               "status": "DRAFT",
+               "audience": "mdv-windows-readers",
+               "objective": "Find Windows users willing to test the first release and learn which reading tasks matter to them - before any adoption push.",
+               "problem": "Reading documentation and READMEs on Windows.",
+               "messaging": "Honest prelaunch: what it is meant to do, that there are no downloads yet, and an invitation to follow the repository and say what they need. Features are described as planned.",
+               "channelPlan": "A short post on the project blog (by hand) and a note to opted-in newsletter subscribers. No community posting until the project's rules there are checked.",
+               "callToAction": "Follow the project and tell us what you need",
+               "destinationUrl": "https://github.com/KofTwentyTwo/MarkdownViewr.Windows/discussions",
+               "utmCampaign": "mdv-windows-testers",
+               "successCriteria": "Number of people who say they will test the first release, and the reading tasks they name (qualitative). No adoption metrics until a release exists.",
+               "leadQualificationEnabled": false,
+               "metrics": [
+                  { "stage": "DELIVERY", "name": "Messages accepted by the provider", "eventType": "provider_accepted", "countMode": "RAW_EVENTS", "instrumentationStatus": "INSTRUMENTED" },
+                  { "stage": "ENGAGEMENT", "name": "People offering to test", "eventType": "tester_interest", "countMode": "UNIQUE_ACTORS", "instrumentationStatus": "NOT_INSTRUMENTED", "notes": "Counted by hand from Discussions until a form or importer exists." }
+               ]
+            }
+         ]
+      }
+   ]
+}

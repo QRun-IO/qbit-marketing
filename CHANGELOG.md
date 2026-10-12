@@ -5,4 +5,40 @@ All notable changes to this project are documented here. The format follows Keep
 ## [0.1.0] - Unreleased
 
 ### Added
-- Repository scaffold: `MarketingQBitConfig` and `MarketingQBitProducer` (table prefix `marketing_`, permissions `marketing.*`), build, CI and repository standard files.
+- Repository scaffold: build, CI and the repository standard files.
+- **Model:** 18 standard `marketing_*` tables, 21 enum possible-value sources, joins and child lists. The PostgreSQL reference DDL (`docs/ddl/postgres.sql`) and an H2 twin are generated from one spec (`scripts/generate-model.py`).
+- **Products and evidence:**
+  - Briefs, audiences, evidence sources with verification dates, and claims (Released / Planned / Unverified / Disputed).
+  - Deterministic **Check Readiness** for products and campaigns.
+- **Campaigns:** one goal each (awareness, open-source adoption, commercial demand, prelaunch research), success criteria, and an explicit lead-qualification rule.
+- **Content:**
+  - Immutable revisions on every relevant edit.
+  - The **Proposed Publication** widget.
+  - Hash-bound approval, invalidated by any edit.
+  - Separate preparation, approval and execution permissions, and an optional four-eyes rule.
+  - Channel AI-content rules.
+- **Execution:**
+  - Durable jobs with idempotency keys, leases, backoff retries only for failures that certainly did not send, and no blind retry of ambiguous outcomes (Reconcile, Mark as Accepted, Mark Not Sent and Retry).
+  - Pause, resume and cancel.
+  - Execution-time re-checks of approval, schedule, channel, transport, rate, consent and suppression, and the bulk limit.
+  - The kill switch.
+  - Run Due Executions on the host scheduler.
+- **Transports:** `MarketingTransport`, the complete `ControlledTestTransport`, and `QqqMessagingEmailTransport` over the host's QQQ messaging provider.
+- **Measurement:**
+  - Separate funnel stages, raw events vs unique actors, "Not measured" for uninstrumented metrics, and test data kept apart.
+  - Outcome events deduplicated by (source, external id).
+  - **Update Results from CRM** and lead qualification only by rule.
+- **CRM:** the `MarketingCrmGateway` SPI and `QbitCrmGateway` for qbit-crm.
+- **Agent:**
+  - A bounded tool-use loop over qbit-assistant's model-provider SPI.
+  - Narrow typed tools (6 read, 3 write-proposal), run as the user with core permission enforcement, the untrusted-data envelope and redaction.
+  - Run and step records with usage and cost.
+  - Budgets, concurrency and rate limits, cancellation, and a plain failure reason when no provider is configured.
+- **Model providers:** `OpenAiCompatibleModelProvider` (no SDK), plus qbit-assistant's Claude and scripted providers.
+- **AI tool kernel:** the read tools are contributed through `AiToolRegistry` when QQQ has it (QRun-IO/qqq#1096).
+- **UI:**
+  - The Marketing app; its home is the Marketing dashboard (Needs Attention, Campaigns, Agent Activity, Configuration Status).
+  - The nav lists only the main tables and settings.
+  - Streamed-ETL record actions with standard summary lines.
+- **Starter data:** QQQ, gclo and MarkdownViewr for Windows, verified 2026-10-12, with honest starter campaigns and the four channels.
+- **Docs:** README, DESIGN, OPERATIONS and STARTER-DATA.
