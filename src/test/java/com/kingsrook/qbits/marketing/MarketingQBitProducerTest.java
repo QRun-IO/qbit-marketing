@@ -17,66 +17,132 @@
 package com.kingsrook.qbits.marketing;
 
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import com.kingsrook.qbits.marketing.agent.KernelToolRegistration;
+import com.kingsrook.qbits.marketing.metadata.MarketingMetaDataBuilder;
+import com.kingsrook.qbits.marketing.security.MarketingPermissions;
 import com.kingsrook.qqq.backend.core.model.metadata.QInstance;
+import com.kingsrook.qqq.backend.core.model.metadata.layout.QAppChildMetaData;
+import com.kingsrook.qqq.backend.core.model.metadata.layout.QAppMetaData;
+import com.kingsrook.qqq.backend.core.model.metadata.processes.QProcessMetaData;
 import com.kingsrook.qqq.backend.core.model.metadata.qbits.QBitConfigValidationException;
+import com.kingsrook.qqq.backend.core.model.metadata.tables.Capability;
+import com.kingsrook.qqq.backend.core.model.metadata.tables.QTableMetaData;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 
 /*******************************************************************************
- ** Unit test for MarketingQBitProducer
+ ** The produced meta-data follows the owner rules.
  *******************************************************************************/
-class MarketingQBitProducerTest
+class MarketingQBitProducerTest extends BaseMarketingTest
 {
 
    /*******************************************************************************
-    ** A configured qbit registers itself in the instance.
+    ** Registered, valid, every table snake_case with the full qbit prefix, and
+    ** every permission marketing.*.
     *******************************************************************************/
    @Test
-   void testProduce() throws Exception
+   void testProducedAndNamed()
    {
-      QInstance           qInstance = new QInstance();
-      MarketingQBitConfig config    = new MarketingQBitConfig().withBackendName("rdbms");
-      MarketingQBitProducer producer  = new MarketingQBitProducer().withQBitConfig(config).withNamespace("marketing");
-
-      assertThat(producer.isEnabled()).isTrue();
-      assertThat(producer.getQBitConfig()).isSameAs(config);
-      assertThat(producer.getNamespace()).isEqualTo("marketing");
-      assertThat(config.getDefaultBackendNameForTables()).isEqualTo("rdbms");
-
-      producer.produce(qInstance);
       assertThat(qInstance.getQBits()).hasSize(1);
       assertThat(qInstance.getQBits().values().iterator().next().getArtifactId()).isEqualTo("qbit-marketing");
+
+      Set<String> tables = qInstance.getTables().keySet();
+      assertThat(tables).hasSize(18).allMatch(t -> t.matches("^marketing_[a-z][a-z0-9_]*$"));
+      for(QTableMetaData table : qInstance.getTables().values())
+      {
+         assertThat(table.getPermissionRules().getPermissionBaseName()).startsWith("marketing");
+         assertThat(table.getIsHidden()).as(table.getName() + " is a standard visible table").isNotEqualTo(true);
+         assertThat(table.getFields().values()).allMatch(f -> f.getBackendName() == null || f.getBackendName().matches("^[a-z][a-z0-9_]*$"));
+      }
+      //////////////////////////////////////////////////////////////////////
+      // the qbit's own processes (QQQ also generates bulk table processes //
+      // such as marketing_product.bulkInsert, governed by table rules)   //
+      //////////////////////////////////////////////////////////////////////
+      List<QProcessMetaData> own = qInstance.getProcesses().values().stream().filter(p -> p.getSourceQBitName() != null).toList();
+      assertThat(own).hasSizeGreaterThan(20);
+      for(QProcessMetaData process : own)
+      {
+         assertThat(process.getName()).startsWith("marketing_");
+         assertThat(process.getPermissionRules().getPermissionBaseName()).startsWith("marketing.");
+      }
+      assertThat(MarketingPermissions.ALL).allMatch(p -> p.startsWith("marketing."));
    }
 
 
 
    /*******************************************************************************
-    ** Without a config the producer is disabled; without a backend it fails.
+    ** The nav lists only the main tables and the settings; processes are never
+    ** nav items and every process runs from a table.
+    *******************************************************************************/
+   @Test
+   void testNavAndActions()
+   {
+      QAppMetaData app = qInstance.getApp(MarketingMetaDataBuilder.APP_NAME);
+      List<String> children = app.getChildren().stream().map(QAppChildMetaData::getName).toList();
+      assertThat(children).containsExactlyElementsOf(concat(MarketingMetaDataBuilder.MAIN_TABLE_NAMES, MarketingMetaDataBuilder.SETTINGS_TABLE_NAMES));
+      assertThat(app.getChildren()).noneMatch(c -> c instanceof QProcessMetaData);
+      assertThat(app.getSections()).allMatch(s -> s.getProcesses() == null || s.getProcesses().isEmpty());
+      assertThat(app.getWidgets()).isNotEmpty();
+
+      assertThat(qInstance.getProcesses().values()).allMatch(p -> p.getTableName() != null && qInstance.getTable(p.getTableName()) != null);
+   }
+
+
+
+   /*******************************************************************************
+    ** System-written tables can't be inserted, edited or deleted from the UI.
+    *******************************************************************************/
+   @Test
+   void testSystemWrittenTablesAreReadOnly()
+   {
+      for(String name : MarketingMetaDataBuilder.SYSTEM_WRITTEN_TABLE_NAMES)
+      {
+         QTableMetaData table = qInstance.getTable(name);
+         assertThat(table.isCapabilityEnabled(qInstance.getBackendForTable(name), Capability.TABLE_INSERT)).as(name).isFalse();
+         assertThat(table.isCapabilityEnabled(qInstance.getBackendForTable(name), Capability.TABLE_UPDATE)).as(name).isFalse();
+      }
+   }
+
+
+
+   /*******************************************************************************
+    ** On QQQ 4.1.0-RC.4 the kernel hook is absent; the qbit still produces.
+    *******************************************************************************/
+   @Test
+   void testKernelHookAbsentOnRc4()
+   {
+      assertThat(KernelToolRegistration.isAvailable()).isFalse();
+      assertThat(KernelToolRegistration.register(qInstance, List.of())).isZero();
+   }
+
+
+
+   /*******************************************************************************
+    ** Disabled without config; invalid config fails.
     *******************************************************************************/
    @Test
    void testDisabledAndInvalid()
    {
       assertThat(new MarketingQBitProducer().isEnabled()).isFalse();
-
-      MarketingQBitConfig config = new MarketingQBitConfig();
-      config.setBackendName(null);
-      assertThat(config.getBackendName()).isNull();
-      assertThatThrownBy(() -> new MarketingQBitProducer().withQBitConfig(config).produce(new QInstance()))
+      assertThatThrownBy(() -> new MarketingQBitProducer().withQBitConfig(new MarketingQBitConfig()).produce(new QInstance())).isInstanceOf(QBitConfigValidationException.class);
+      assertThatThrownBy(() -> new MarketingQBitProducer().withQBitConfig(new MarketingQBitConfig().withBackendName("nope")).produce(new QInstance()))
          .isInstanceOf(QBitConfigValidationException.class);
+      assertThat(MarketingQBitConfig.TABLE_NAME_PREFIX).isEqualTo("marketing_");
    }
 
 
 
    /*******************************************************************************
-    ** Names follow the owner rule: lowercase snake_case with the full qbit name.
+    **
     *******************************************************************************/
-   @Test
-   void testNaming()
+   private static List<String> concat(List<String> a, List<String> b)
    {
-      assertThat(MarketingQBitConfig.TABLE_NAME_PREFIX).isEqualTo("marketing_").matches("^[a-z][a-z0-9_]*_$");
-      assertThat(MarketingQBitConfig.PERMISSION_BASE_NAME).isEqualTo("marketing");
+      return (java.util.stream.Stream.concat(a.stream(), b.stream()).collect(Collectors.toList()));
    }
 
 }

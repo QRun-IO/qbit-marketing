@@ -22,6 +22,11 @@
       <maven.compiler.source>21</maven.compiler.source>
       <maven.compiler.target>21</maven.compiler.target>
       <jacoco.version>0.8.15</jacoco.version>
+      <!-- The model-provider SPI (AssistantModelProvider), the scripted test   -->
+      <!-- provider and the price table come from qbit-assistant; marketing    -->
+      <!-- reuses them instead of a second provider abstraction.               -->
+      <qbit-assistant.version>0.1.0-RC.2</qbit-assistant.version>
+      <h2.version>2.3.232</h2.version>
    </properties>
 
    <parent>
@@ -73,6 +78,24 @@
       </dependency>
 
       <dependency>
+         <groupId>com.kingsrook.qbits</groupId>
+         <artifactId>qbit-assistant</artifactId>
+         <version>${qbit-assistant.version}</version>
+      </dependency>
+
+      <!-- tests: the RDBMS backend over H2 proves the DDL and persistence across a restart -->
+      <dependency>
+         <groupId>com.kingsrook.qqq</groupId>
+         <artifactId>qqq-backend-module-rdbms</artifactId>
+         <scope>test</scope>
+      </dependency>
+      <dependency>
+         <groupId>com.h2database</groupId>
+         <artifactId>h2</artifactId>
+         <version>${h2.version}</version>
+         <scope>test</scope>
+      </dependency>
+      <dependency>
          <groupId>org.junit.jupiter</groupId>
          <artifactId>junit-jupiter</artifactId>
          <scope>test</scope>
@@ -86,6 +109,22 @@
    </dependencies>
 
    <build>
+      <resources>
+         <resource>
+            <directory>src/main/resources</directory>
+            <filtering>true</filtering>
+            <includes>
+               <include>qbit-marketing.properties</include>
+            </includes>
+         </resource>
+         <resource>
+            <directory>src/main/resources</directory>
+            <filtering>false</filtering>
+            <excludes>
+               <exclude>qbit-marketing.properties</exclude>
+            </excludes>
+         </resource>
+      </resources>
       <plugins>
          <plugin>
             <groupId>org.jacoco</groupId>
