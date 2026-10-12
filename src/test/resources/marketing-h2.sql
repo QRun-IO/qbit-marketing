@@ -1,4 +1,4 @@
--- Marketing QBit - H2 test schema (generated; mirrors docs/ddl/postgres.sql)
+-- Marketing QBit - H2 test schema (generated, mirrors docs/ddl/postgres.sql)
 
 -- A product the marketing team promotes: its brief, maturity and official links.
 CREATE TABLE IF NOT EXISTS marketing_product (
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS marketing_content (
    call_to_action VARCHAR(500),
    recipient_scope VARCHAR(255),
    scheduled_for TIMESTAMP,
-   status INTEGER NOT NULL,
+   status INTEGER,
    author_type INTEGER,
    revision_number INTEGER,
    content_hash VARCHAR(64),

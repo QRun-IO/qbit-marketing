@@ -95,7 +95,7 @@ public class ExecutionService
     ** Run every due execution (up to the batch size). Returns one line per
     ** execution touched.
     *******************************************************************************/
-   public List<String> runDue(Instant now) throws QException
+   private List<String> runDueImpl(Instant now) throws QException
    {
       MarketingRuntime runtime = MarketingRuntime.current();
       List<String>     lines   = new ArrayList<>();
@@ -124,7 +124,7 @@ public class ExecutionService
    /*******************************************************************************
     ** Run one execution now, if it is scheduled and due.
     *******************************************************************************/
-   public String runOne(Integer executionId, Instant now) throws QException
+   private String runOneImpl(Integer executionId, Instant now) throws QException
    {
       requireExecutePermission();
       MarketingRuntime runtime = MarketingRuntime.current();
@@ -508,7 +508,7 @@ public class ExecutionService
    /*******************************************************************************
     ** SCHEDULED -> PAUSED.
     *******************************************************************************/
-   public String pause(Integer executionId) throws QException
+   private String pauseImpl(Integer executionId) throws QException
    {
       requireExecutePermission();
       MarketingExecution execution = load(executionId);
@@ -523,7 +523,7 @@ public class ExecutionService
    /*******************************************************************************
     ** PAUSED -> SCHEDULED, if its approval still covers the content.
     *******************************************************************************/
-   public String resume(Integer executionId) throws QException
+   private String resumeImpl(Integer executionId) throws QException
    {
       requireExecutePermission();
       MarketingExecution execution = load(executionId);
@@ -544,7 +544,7 @@ public class ExecutionService
    /*******************************************************************************
     ** Cancel an execution that has not completed; its approval is revoked.
     *******************************************************************************/
-   public String cancel(Integer executionId) throws QException
+   private String cancelImpl(Integer executionId) throws QException
    {
       requireExecutePermission();
       MarketingExecution execution = load(executionId);
@@ -576,7 +576,7 @@ public class ExecutionService
    /*******************************************************************************
     ** Ask the transport about an ambiguous execution.
     *******************************************************************************/
-   public String reconcile(Integer executionId) throws QException
+   private String reconcileImpl(Integer executionId) throws QException
    {
       requireExecutePermission();
       MarketingExecution execution = load(executionId);
@@ -612,7 +612,7 @@ public class ExecutionService
    /*******************************************************************************
     ** A person confirms the provider accepted an ambiguous execution.
     *******************************************************************************/
-   public String resolveAsAccepted(Integer executionId) throws QException
+   private String resolveAsAcceptedImpl(Integer executionId) throws QException
    {
       requireExecutePermission();
       MarketingExecution execution = load(executionId);
@@ -630,7 +630,7 @@ public class ExecutionService
     ** (same idempotency key, so a provider that did get it can drop the
     ** repeat). The approval must still cover the content.
     *******************************************************************************/
-   public String resolveAsNotSent(Integer executionId) throws QException
+   private String resolveAsNotSentImpl(Integer executionId) throws QException
    {
       requireExecutePermission();
       MarketingExecution execution = load(executionId);
@@ -774,6 +774,86 @@ public class ExecutionService
       {
          throw (new QUserFacingException("You do not have permission to run executions (" + MarketingPermissions.EXECUTE + ")."));
       }
+   }
+
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public List<String> runDue(Instant now) throws QException
+   {
+      return (MarketingStore.trusted(() -> runDueImpl(now)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String runOne(Integer executionId, Instant now) throws QException
+   {
+      requireExecutePermission();
+      return (MarketingStore.trusted(() -> runOneImpl(executionId, now)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String pause(Integer executionId) throws QException
+   {
+      requireExecutePermission();
+      return (MarketingStore.trusted(() -> pauseImpl(executionId)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String resume(Integer executionId) throws QException
+   {
+      requireExecutePermission();
+      return (MarketingStore.trusted(() -> resumeImpl(executionId)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String cancel(Integer executionId) throws QException
+   {
+      requireExecutePermission();
+      return (MarketingStore.trusted(() -> cancelImpl(executionId)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String reconcile(Integer executionId) throws QException
+   {
+      requireExecutePermission();
+      return (MarketingStore.trusted(() -> reconcileImpl(executionId)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String resolveAsAccepted(Integer executionId) throws QException
+   {
+      requireExecutePermission();
+      return (MarketingStore.trusted(() -> resolveAsAcceptedImpl(executionId)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String resolveAsNotSent(Integer executionId) throws QException
+   {
+      requireExecutePermission();
+      return (MarketingStore.trusted(() -> resolveAsNotSentImpl(executionId)));
    }
 
 }

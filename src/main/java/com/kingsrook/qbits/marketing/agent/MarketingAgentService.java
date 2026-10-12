@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import com.kingsrook.qbits.assistant.engine.ModelPricing;
 import com.kingsrook.qbits.assistant.provider.AssistantModelProvider;
 import com.kingsrook.qbits.assistant.provider.CacheHint;
@@ -108,6 +107,20 @@ public class MarketingAgentService
     ** FAILED, with the reason); throws only for invalid requests.
     *******************************************************************************/
    public MarketingAgentRun run(AgentTask task, Integer campaignId, Integer contentId, String instructions) throws QException
+   {
+      ///////////////////////////////////////////////////////////////////////
+      // the run's own bookkeeping is trusted internal work; the tools it  //
+      // gives the model still read with PermissionEnforcement.ENFORCE     //
+      ///////////////////////////////////////////////////////////////////////
+      return (MarketingStore.trusted(() -> runImpl(task, campaignId, contentId, instructions)));
+   }
+
+
+
+   /*******************************************************************************
+    ** See run.
+    *******************************************************************************/
+   private MarketingAgentRun runImpl(AgentTask task, Integer campaignId, Integer contentId, String instructions) throws QException
    {
       QSession session = QContext.getQSession();
       if(session == null || session instanceof QSystemUserSession || !session.hasPermission(MarketingPermissions.AGENT))

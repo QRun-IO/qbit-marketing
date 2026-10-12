@@ -85,7 +85,8 @@ public final class ContentHasher
    /*******************************************************************************
     ** Values may still be strings when customizers run (e.g. from an API
     ** request), so normalize types: the same content always hashes the same.
-    ** Blank strings count as absent.
+    ** Blank strings count as absent. Schedules count to the second (databases
+    ** store different sub-second precision).
     *******************************************************************************/
    static String normalize(String field, Object value)
    {
@@ -95,7 +96,7 @@ public final class ContentHasher
       }
       if("scheduledFor".equals(field))
       {
-         return (ValueUtils.getValueAsInstant(value).toString());
+         return (ValueUtils.getValueAsInstant(value).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString());
       }
       if("channelId".equals(field))
       {

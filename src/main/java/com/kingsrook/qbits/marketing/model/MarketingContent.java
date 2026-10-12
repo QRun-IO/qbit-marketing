@@ -65,10 +65,10 @@ public class MarketingContent extends QRecordEntity
    @QField()
    private Instant scheduledFor;
 
-   @QField(isRequired = true, possibleValueSourceName = ContentStatus.NAME)
+   @QField(isEditable = false, possibleValueSourceName = ContentStatus.NAME)
    private Integer status;
 
-   @QField(possibleValueSourceName = AuthorType.NAME)
+   @QField(isEditable = false, possibleValueSourceName = AuthorType.NAME)
    private Integer authorType;
 
    @QField(isEditable = false)

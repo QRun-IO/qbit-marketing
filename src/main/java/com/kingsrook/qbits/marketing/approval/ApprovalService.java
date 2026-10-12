@@ -68,7 +68,7 @@ public class ApprovalService
    /*******************************************************************************
     ** DRAFT -> IN_REVIEW.
     *******************************************************************************/
-   public String submitForReview(Integer contentId) throws QException
+   private String submitForReviewImpl(Integer contentId) throws QException
    {
       requirePermission(MarketingPermissions.PREPARE, "submit content for review");
       MarketingContent content = loadContent(contentId);
@@ -85,7 +85,7 @@ public class ApprovalService
     ** IN_REVIEW -> APPROVED: record a human approval of this exact revision,
     ** destination, recipient scope and schedule.
     *******************************************************************************/
-   public String approve(Integer contentId, String note) throws QException
+   private String approveImpl(Integer contentId, String note) throws QException
    {
       requirePermission(MarketingPermissions.APPROVE, "approve content");
       QSession session = QContext.getQSession();
@@ -147,7 +147,7 @@ public class ApprovalService
     ** Send content back to draft: revoke its active approvals and cancel its
     ** pending executions.
     *******************************************************************************/
-   public String returnToDraft(Integer contentId, String reason) throws QException
+   private String returnToDraftImpl(Integer contentId, String reason) throws QException
    {
       requirePermission(MarketingPermissions.APPROVE, "return content to draft");
       MarketingContent content = loadContent(contentId);
@@ -178,7 +178,7 @@ public class ApprovalService
     ** APPROVED -> SCHEDULED: create the durable execution job (idempotent: one
     ** execution per approval).
     *******************************************************************************/
-   public String schedule(Integer contentId) throws QException
+   private String scheduleImpl(Integer contentId) throws QException
    {
       requirePermission(MarketingPermissions.EXECUTE, "schedule content");
       MarketingContent content = loadContent(contentId);
@@ -414,6 +414,47 @@ public class ApprovalService
       {
          throw (new QUserFacingException("You do not have permission to " + what + " (" + permission + ")."));
       }
+   }
+
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String submitForReview(Integer contentId) throws QException
+   {
+      requirePermission(MarketingPermissions.PREPARE, "submit content for review");
+      return (MarketingStore.trusted(() -> submitForReviewImpl(contentId)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String approve(Integer contentId, String note) throws QException
+   {
+      requirePermission(MarketingPermissions.APPROVE, "approve content");
+      return (MarketingStore.trusted(() -> approveImpl(contentId, note)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String returnToDraft(Integer contentId, String reason) throws QException
+   {
+      requirePermission(MarketingPermissions.APPROVE, "return content to draft");
+      return (MarketingStore.trusted(() -> returnToDraftImpl(contentId, reason)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String schedule(Integer contentId) throws QException
+   {
+      requirePermission(MarketingPermissions.EXECUTE, "schedule content");
+      return (MarketingStore.trusted(() -> scheduleImpl(contentId)));
    }
 
 }

@@ -106,7 +106,7 @@ public class MarketingStarterData
     ** Load the bundled file.
     *******************************************************************************/
    @SuppressWarnings("unchecked")
-   public Result load() throws QException
+   private Result loadImpl() throws QException
    {
       Map<String, Object> root;
       try(InputStream stream = MarketingStarterData.class.getResourceAsStream(RESOURCE))
@@ -267,6 +267,16 @@ public class MarketingStarterData
    {
       Object value = map.get(key);
       return (value == null ? List.of() : (List<Map<String, Object>>) value);
+   }
+
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public Result load() throws QException
+   {
+      return (MarketingStore.trusted(() -> loadImpl()));
    }
 
 }

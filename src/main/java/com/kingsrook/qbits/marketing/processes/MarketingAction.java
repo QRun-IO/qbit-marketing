@@ -268,6 +268,14 @@ public abstract class MarketingAction
       {
          ArrayList<ProcessSummaryLineInterface> lines = new ArrayList<>();
          results.values().forEach(line -> line.addSelfToListIfAnyCount(lines));
+
+         ////////////////////////////////////////////////////////////////////
+         // the Result screen also shows what was skipped, and why         //
+         ////////////////////////////////////////////////////////////////////
+         if(getTransformStep() instanceof Transform transform)
+         {
+            transform.skipped.values().forEach(line -> line.addSelfToListIfAnyCount(lines));
+         }
          return (lines);
       }
    }

@@ -73,7 +73,7 @@ public class ReadinessChecker
    /*******************************************************************************
     ** Check a product; returns the number of open findings recorded.
     *******************************************************************************/
-   public int checkProduct(Integer productId) throws QException
+   private int checkProductImpl(Integer productId) throws QException
    {
       MarketingProduct product = new MarketingProduct(MarketingStore.require(MarketingProduct.TABLE_NAME, productId));
       findings.clear();
@@ -146,7 +146,7 @@ public class ReadinessChecker
    /*******************************************************************************
     ** Check a campaign; returns the number of open findings recorded.
     *******************************************************************************/
-   public int checkCampaign(Integer campaignId) throws QException
+   private int checkCampaignImpl(Integer campaignId) throws QException
    {
       MarketingCampaign campaign = new MarketingCampaign(MarketingStore.require(MarketingCampaign.TABLE_NAME, campaignId));
       MarketingProduct  product  = new MarketingProduct(MarketingStore.require(MarketingProduct.TABLE_NAME, campaign.getProductId()));
@@ -309,6 +309,25 @@ public class ReadinessChecker
          return ("");
       }
       return (value.length() > 200 ? value.substring(0, 197) + "..." : value);
+   }
+
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public int checkProduct(Integer productId) throws QException
+   {
+      return (MarketingStore.trusted(() -> checkProductImpl(productId)));
+   }
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public int checkCampaign(Integer campaignId) throws QException
+   {
+      return (MarketingStore.trusted(() -> checkCampaignImpl(campaignId)));
    }
 
 }

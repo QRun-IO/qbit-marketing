@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.kingsrook.qbits.marketing.security.MarketingInternalWrite;
+import com.kingsrook.qqq.backend.core.actions.permissions.CorePermissionEnforcer;
 import com.kingsrook.qqq.backend.core.actions.tables.CountAction;
 import com.kingsrook.qqq.backend.core.actions.tables.GetAction;
 import com.kingsrook.qqq.backend.core.actions.tables.InsertAction;
@@ -188,6 +189,23 @@ public final class MarketingStore
          update(tableName, record);
          return (null);
       });
+   }
+
+
+
+   /*******************************************************************************
+    ** Run a service body as framework-internal work: after the service checked
+    ** the permission its step needs, its own reads and writes are trusted the
+    ** same way QQQ trusts calls nested inside a core action (an authorized
+    ** scope). Record security locks still apply, and anything that requests
+    ** PermissionEnforcement.ENFORCE (the agent's tools) is still checked.
+    *******************************************************************************/
+   public static <T> T trusted(MarketingInternalWrite.Body<T> body) throws QException
+   {
+      try(CorePermissionEnforcer.AuthorizedScope ignored = CorePermissionEnforcer.openAuthorizedScope())
+      {
+         return (body.run());
+      }
    }
 
 

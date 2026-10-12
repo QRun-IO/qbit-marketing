@@ -58,7 +58,7 @@ public class CrmResultsService
    /*******************************************************************************
     ** Import and qualify. Returns a one-line summary.
     *******************************************************************************/
-   public String updateFromCrm(Integer campaignId) throws QException
+   private String updateFromCrmImpl(Integer campaignId) throws QException
    {
       MarketingCrmGateway gateway = MarketingRuntime.current().getAvailableCrmGateway();
       if(gateway == null)
@@ -163,6 +163,16 @@ public class CrmResultsService
       return (MarketingStore.count(MarketingOutcomeEvent.TABLE_NAME, new QQueryFilter(
          new QFilterCriteria("source", QCriteriaOperator.EQUALS, source),
          new QFilterCriteria("externalEventId", QCriteriaOperator.EQUALS, externalId))) > 0);
+   }
+
+
+   /*******************************************************************************
+    ** Entry point (see the implementation): runs as trusted internal work after
+    ** its permission check.
+    *******************************************************************************/
+   public String updateFromCrm(Integer campaignId) throws QException
+   {
+      return (MarketingStore.trusted(() -> updateFromCrmImpl(campaignId)));
    }
 
 }

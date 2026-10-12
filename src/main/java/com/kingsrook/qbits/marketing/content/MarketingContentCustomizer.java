@@ -93,6 +93,7 @@ public class MarketingContentCustomizer implements TableCustomizerInterface
             record.setValue("ownerUserId", MarketingStore.currentUserId());
          }
          setProductFromCampaign(record, record.getValueInteger("campaignId"));
+         normalizeSchedule(record);
          record.setValue("revisionNumber", 1);
          record.setValue("contentHash", ContentHasher.hash(record));
       }
@@ -152,6 +153,7 @@ public class MarketingContentCustomizer implements TableCustomizerInterface
          }
          record.removeValue("revisionNumber");
          record.removeValue("contentHash");
+         normalizeSchedule(record);
 
          QRecord merged = new QRecord(old);
          merged.getValues().putAll(record.getValues());
@@ -264,6 +266,21 @@ public class MarketingContentCustomizer implements TableCustomizerInterface
             .withValue("id", execution.getValue("id"))
             .withValue("status", ExecutionStatus.BLOCKED.getId())
             .withValue("statusDetail", reason));
+      }
+   }
+
+
+
+   /*******************************************************************************
+    ** Schedules are kept to the second, so what is approved (and hashed) is
+    ** exactly what every database stores.
+    *******************************************************************************/
+   static void normalizeSchedule(QRecord record)
+   {
+      if(record.getValues().containsKey("scheduledFor") && record.getValue("scheduledFor") != null)
+      {
+         Instant instant = ValueUtils.getValueAsInstant(record.getValue("scheduledFor"));
+         record.setValue("scheduledFor", instant == null ? null : instant.truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
       }
    }
 
