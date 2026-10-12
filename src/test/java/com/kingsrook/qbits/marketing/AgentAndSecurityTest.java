@@ -271,11 +271,10 @@ class AgentAndSecurityTest extends BaseMarketingTest
       assertThat(AgentRunStatus.getById(failed.getStatus())).isEqualTo(AgentRunStatus.FAILED);
       assertThat(failed.getErrorMessage()).contains("AUTHENTICATION").doesNotContain("sk-should-not-leak");
 
-      MarketingStore.insert(new MarketingPolicy().withName(MarketingRuntime.POLICY_NAME).withAgentEnabled(false).withKillSwitchReason("review"));
+      MarketingStore.update(MarketingPolicy.TABLE_NAME, new QRecord().withValue("id", policyId()).withValue("agentEnabled", false).withValue("killSwitchReason", "review"));
       assertThat(new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null).getErrorMessage()).contains("switched off");
 
-      Integer policyId = MarketingStore.queryBy(MarketingPolicy.TABLE_NAME, "name", MarketingRuntime.POLICY_NAME).get(0).getValueInteger("id");
-      MarketingStore.update(MarketingPolicy.TABLE_NAME, new QRecord().withValue("id", policyId).withValue("agentEnabled", true).withValue("dailyTokenLimit", 500L));
+      MarketingStore.update(MarketingPolicy.TABLE_NAME, new QRecord().withValue("id", policyId()).withValue("agentEnabled", true).withValue("dailyTokenLimit", 500L));
       assertThat(new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null).getErrorMessage()).contains("budget");
    }
 

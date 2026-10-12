@@ -117,6 +117,10 @@ public class FakeCrmGateway implements MarketingCrmGateway
    @Override
    public List<CrmRecipient> resolveRecipients(String recipientScope)
    {
+      if("crm-list:99".equals(recipientScope))
+      {
+         throw (new IllegalStateException("simulated CRM outage for list 99"));
+      }
       List<CrmRecipient> list = new ArrayList<>();
       List<Integer>      ids  = recipientScope.startsWith("crm-list:") ? lists.getOrDefault(Integer.valueOf(recipientScope.substring(9)), List.of())
          : List.of(Integer.valueOf(recipientScope.substring(12)));

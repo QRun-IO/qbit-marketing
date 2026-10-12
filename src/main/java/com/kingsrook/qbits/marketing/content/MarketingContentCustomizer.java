@@ -126,16 +126,31 @@ public class MarketingContentCustomizer implements TableCustomizerInterface
    @Override
    public List<QRecord> preUpdate(UpdateInput updateInput, List<QRecord> records, boolean isPreview, Optional<List<QRecord>> oldRecordList) throws QException
    {
-      boolean                     internal = MarketingInternalWrite.isActive();
-      Map<Serializable, QRecord> oldById  = oldRecordListToMap("id", oldRecordList).orElse(Map.of());
+      boolean               internal = MarketingInternalWrite.isActive();
+      Map<Integer, QRecord> oldById  = new java.util.HashMap<>();
+      for(QRecord old : oldRecordList.orElse(List.of()))
+      {
+         oldById.put(ValueUtils.getValueAsInteger(old.getValue("id")), old);
+      }
 
       for(QRecord record : records)
       {
-         QRecord old = oldById.get(record.getValue("id"));
+         ///////////////////////////////////////////////////////////////////
+         // the UI and API pass the id as a String: normalize it, and     //
+         // never let an edit through without its old record (fail closed) //
+         ///////////////////////////////////////////////////////////////////
+         Integer id  = ValueUtils.getValueAsInteger(record.getValue("id"));
+         QRecord old = id == null ? null : oldById.get(id);
+         if(old == null && id != null)
+         {
+            old = MarketingStore.get(MarketingContent.TABLE_NAME, id);
+         }
          if(old == null)
          {
+            record.addError(new BadInputStatusMessage("The content to update was not found."));
             continue;
          }
+         record.setValue("id", id);
 
          ////////////////////////////////////////////////////////////////////
          // managed fields: people can't set them (the UI shows them read- //
@@ -186,20 +201,17 @@ public class MarketingContentCustomizer implements TableCustomizerInterface
    @Override
    public List<QRecord> postUpdate(UpdateInput updateInput, List<QRecord> records, Optional<List<QRecord>> oldRecordList) throws QException
    {
-      Map<Serializable, QRecord> oldById = oldRecordListToMap("id", oldRecordList).orElse(Map.of());
+      ////////////////////////////////////////////////////////////////////
+      // preUpdate sets contentHash only when the approved fields changed //
+      ////////////////////////////////////////////////////////////////////
       for(QRecord record : records)
       {
-         QRecord old = oldById.get(record.getValue("id"));
-         if(old == null || (record.getErrors() != null && !record.getErrors().isEmpty()) || record.getValue("contentHash") == null)
-         {
-            continue;
-         }
-         if(Objects.equals(record.getValueString("contentHash"), old.getValueString("contentHash")))
+         if((record.getErrors() != null && !record.getErrors().isEmpty()) || record.getValue("contentHash") == null)
          {
             continue;
          }
 
-         QRecord current = MarketingStore.get(MarketingContent.TABLE_NAME, record.getValue("id"));
+         QRecord current = MarketingStore.get(MarketingContent.TABLE_NAME, ValueUtils.getValueAsInteger(record.getValue("id")));
          if(current == null)
          {
             continue;

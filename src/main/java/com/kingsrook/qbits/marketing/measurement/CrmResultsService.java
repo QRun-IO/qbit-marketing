@@ -172,6 +172,7 @@ public class CrmResultsService
     *******************************************************************************/
    public String updateFromCrm(Integer campaignId) throws QException
    {
+      com.kingsrook.qbits.marketing.security.MarketingPermissions.require("update results from the CRM", com.kingsrook.qbits.marketing.security.MarketingPermissions.PREPARE);
       return (MarketingStore.trusted(() -> updateFromCrmImpl(campaignId)));
    }
 

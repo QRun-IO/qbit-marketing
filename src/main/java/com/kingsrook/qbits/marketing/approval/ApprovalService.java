@@ -347,6 +347,10 @@ public class ApprovalService
       }
 
       String scope = content.getRecipientScope();
+      if(StringUtils.hasContent(scope) && !"public".equals(scope) && !scope.matches("^crm-(list|contact):[0-9]{1,9}$"))
+      {
+         throw (new QUserFacingException("Recipient scope [" + scope + "] must be empty or public (a publication), crm-list:<id> or crm-contact:<id>."));
+      }
       boolean crmScope = scope != null && scope.startsWith("crm-");
       if(ChannelType.EMAIL.getId().equals(channel.getChannelType()) && !crmScope)
       {

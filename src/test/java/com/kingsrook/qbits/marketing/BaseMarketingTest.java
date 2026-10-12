@@ -78,6 +78,17 @@ public abstract class BaseMarketingTest
       customizeConfig(config);
       qInstance = defineInstance(config);
       QContext.init(qInstance, admin());
+      MarketingStore.insert(new com.kingsrook.qbits.marketing.model.MarketingPolicy().withName(MarketingRuntime.POLICY_NAME).withAgentEnabled(true).withExecutionEnabled(true));
+   }
+
+
+
+   /*******************************************************************************
+    ** The default policy row's id.
+    *******************************************************************************/
+   protected Integer policyId() throws QException
+   {
+      return (MarketingStore.queryBy(com.kingsrook.qbits.marketing.model.MarketingPolicy.TABLE_NAME, "name", MarketingRuntime.POLICY_NAME).get(0).getValueInteger("id"));
    }
 
 

@@ -276,6 +276,7 @@ public class MarketingStarterData
     *******************************************************************************/
    public Result load() throws QException
    {
+      com.kingsrook.qbits.marketing.security.MarketingPermissions.require("load starter data", com.kingsrook.qbits.marketing.security.MarketingPermissions.PREPARE);
       return (MarketingStore.trusted(() -> loadImpl()));
    }
 

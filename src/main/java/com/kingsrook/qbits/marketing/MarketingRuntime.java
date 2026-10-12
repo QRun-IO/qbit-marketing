@@ -234,6 +234,18 @@ public class MarketingRuntime implements QSupplementalInstanceMetaData
          LOG.warn("Could not read the marketing policy for the status view", e);
       }
 
+      if(policy == null)
+      {
+         list.add(new IntegrationStatus("Policy", POLICY_NAME, "Missing: agent and execution are off",
+            "Create the Marketing Policy row named " + POLICY_NAME + " (or run Load Verified Starter Data) to switch them on."));
+      }
+      else
+      {
+         list.add(new IntegrationStatus("Policy", POLICY_NAME,
+            "Agent " + (Boolean.TRUE.equals(policy.getAgentEnabled()) ? "on" : "off") + ", execution " + (Boolean.TRUE.equals(policy.getExecutionEnabled()) ? "on" : "off"),
+            StringUtils.hasContent(policy.getKillSwitchReason()) ? policy.getKillSwitchReason() : "Switches and budgets are in Marketing Policy."));
+      }
+
       AssistantModelProvider active = resolveProvider(policy);
       String                 model  = resolveModel(policy);
       if(config.getModelProviders().isEmpty())

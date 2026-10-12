@@ -180,7 +180,11 @@ public class MarketingAgentService
     *******************************************************************************/
    String preflight(MarketingRuntime runtime, MarketingPolicy policy, AssistantModelProvider provider, String model) throws QException
    {
-      if(policy != null && Boolean.FALSE.equals(policy.getAgentEnabled()))
+      if(policy == null)
+      {
+         return ("There is no Marketing Policy row named " + MarketingRuntime.POLICY_NAME + ", so the agent is off.");
+      }
+      if(!Boolean.TRUE.equals(policy.getAgentEnabled()))
       {
          return ("The marketing agent is switched off in Marketing Policy" + (StringUtils.hasContent(policy.getKillSwitchReason()) ? " (" + policy.getKillSwitchReason() + ")" : "") + ".");
       }
@@ -502,7 +506,7 @@ public class MarketingAgentService
    static long tokensSince(Instant since) throws QException
    {
       long total = 0;
-      for(QRecord record : MarketingStore.query(MarketingAgentRun.TABLE_NAME, new QQueryFilter(new QFilterCriteria("createDate", QCriteriaOperator.GREATER_THAN_OR_EQUALS, since))))
+      for(QRecord record : MarketingStore.asSystem(() -> MarketingStore.query(MarketingAgentRun.TABLE_NAME, new QQueryFilter(new QFilterCriteria("createDate", QCriteriaOperator.GREATER_THAN_OR_EQUALS, since)))))
       {
          total += nz(record.getValueLong("inputTokens")) + nz(record.getValueLong("outputTokens"));
       }
@@ -517,7 +521,7 @@ public class MarketingAgentService
    static long costSince(Instant since) throws QException
    {
       long total = 0;
-      for(QRecord record : MarketingStore.query(MarketingAgentRun.TABLE_NAME, new QQueryFilter(new QFilterCriteria("createDate", QCriteriaOperator.GREATER_THAN_OR_EQUALS, since))))
+      for(QRecord record : MarketingStore.asSystem(() -> MarketingStore.query(MarketingAgentRun.TABLE_NAME, new QQueryFilter(new QFilterCriteria("createDate", QCriteriaOperator.GREATER_THAN_OR_EQUALS, since)))))
       {
          total += nz(record.getValueLong("costMicros"));
       }

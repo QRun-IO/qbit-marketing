@@ -26,6 +26,7 @@ import com.kingsrook.qbits.marketing.MarketingQBitConfig;
 import com.kingsrook.qbits.marketing.MarketingRuntime;
 import com.kingsrook.qbits.marketing.MarketingStore;
 import com.kingsrook.qbits.marketing.approval.ApprovalService;
+import com.kingsrook.qbits.marketing.content.ContentHasher;
 import com.kingsrook.qbits.marketing.crm.MarketingCrmGateway;
 import com.kingsrook.qbits.marketing.model.MarketingApproval;
 import com.kingsrook.qbits.marketing.model.MarketingChannel;
@@ -109,7 +110,7 @@ public class ExecutionService
          lines.addAll(recoverStaleLeases(now));
          for(QRecord record : dueExecutions(now, runtime.getConfig().getWorkerBatchSize()))
          {
-            lines.add("Execution #" + record.getValue("id") + ": " + executeLocked(record.getValueInteger("id"), now));
+            lines.add("Execution #" + record.getValue("id") + ": " + executeIsolated(record.getValueInteger("id"), now));
          }
       }
       finally
@@ -134,7 +135,7 @@ public class ExecutionService
       }
       try
       {
-         return (executeLocked(executionId, now));
+         return (executeIsolated(executionId, now));
       }
       finally
       {
@@ -170,6 +171,41 @@ public class ExecutionService
 
 
    /*******************************************************************************
+    ** Run one execution without letting its failure stop the others: an error
+    ** before the claim blocks this execution (with the reason); an error after
+    ** the claim leaves it Running, so its lease expires into "needs
+    ** reconciliation" - it is never retried blindly.
+    *******************************************************************************/
+   private String executeIsolated(Integer executionId, Instant now)
+   {
+      try
+      {
+         return (executeLocked(executionId, now));
+      }
+      catch(Exception e)
+      {
+         LOG.warn("Execution failed with an error", e, logPair("executionId", executionId));
+         String reason = e instanceof QUserFacingException ? e.getMessage() : "an internal error (" + e.getClass().getSimpleName() + ", see the server log)";
+         try
+         {
+            QRecord current = MarketingStore.get(MarketingExecution.TABLE_NAME, executionId);
+            if(current != null && ExecutionStatus.SCHEDULED.getId().equals(current.getValueInteger("status")))
+            {
+               updateExecution(new QRecord().withValue("id", executionId).withValue("status", ExecutionStatus.BLOCKED.getId()).withValue("statusDetail", "Blocked: " + reason));
+               return ("blocked: " + reason);
+            }
+         }
+         catch(Exception inner)
+         {
+            LOG.warn("Could not mark a failed execution blocked", inner, logPair("executionId", executionId));
+         }
+         return ("error: " + reason + " (left for its lease to expire into reconciliation if it was running)");
+      }
+   }
+
+
+
+   /*******************************************************************************
     ** Claim and run one execution (caller holds the worker lock).
     *******************************************************************************/
    private String executeLocked(Integer executionId, Instant now) throws QException
@@ -198,8 +234,15 @@ public class ExecutionService
       ////////////////////
       // kill switch    //
       ////////////////////
+      ////////////////////////////////////////////////////////////////////
+      // fail closed: no policy row, or no explicit "on", means no sends //
+      ////////////////////////////////////////////////////////////////////
       MarketingPolicy policy = runtime.readPolicy();
-      if(policy != null && Boolean.FALSE.equals(policy.getExecutionEnabled()))
+      if(policy == null)
+      {
+         return ("not run: there is no Marketing Policy row named " + MarketingRuntime.POLICY_NAME + ", so execution is off.");
+      }
+      if(!Boolean.TRUE.equals(policy.getExecutionEnabled()))
       {
          return ("not run: execution is switched off in Marketing Policy" + (StringUtils.hasContent(policy.getKillSwitchReason()) ? " (" + policy.getKillSwitchReason() + ")" : "") + ".");
       }
@@ -329,7 +372,11 @@ public class ExecutionService
          return (Checked.blocked("the approval is " + ApprovalStatus.getById(approval.getStatus()).getLabel()
             + (StringUtils.hasContent(approval.getInvalidatedReason()) ? " (" + approval.getInvalidatedReason() + ")" : "") + "."));
       }
-      if(!Objects.equals(approval.getContentHash(), content.getContentHash()))
+      //////////////////////////////////////////////////////////////////////
+      // the stored hash AND a hash recomputed from the very fields that //
+      // will be sent must both match what was approved                   //
+      //////////////////////////////////////////////////////////////////////
+      if(!Objects.equals(approval.getContentHash(), content.getContentHash()) || !Objects.equals(approval.getContentHash(), ContentHasher.hash(contentRecord)))
       {
          return (Checked.blocked("the content changed after approval (hash mismatch)."));
       }
@@ -359,6 +406,10 @@ public class ExecutionService
          return (Checked.blocked("transport " + transport.getName() + " is not usable: " + transport.getStatus().detail()));
       }
       ChannelType channelType = ChannelType.getById(channel.getChannelType());
+      if(channelType == null)
+      {
+         return (Checked.blocked("channel " + channel.getName() + " has no channel type."));
+      }
       if(!transport.getSupportedChannelTypes().contains(channelType))
       {
          return (Checked.blocked("transport " + transport.getName() + " does not serve " + channelType.getLabel() + " channels."));
@@ -449,9 +500,9 @@ public class ExecutionService
    private static int countChannelAttemptsLastHour(Integer channelId, Instant now) throws QException
    {
       int count = 0;
-      for(QRecord execution : MarketingStore.query(MarketingExecution.TABLE_NAME, new QQueryFilter(
+      for(QRecord execution : MarketingStore.asSystem(() -> MarketingStore.query(MarketingExecution.TABLE_NAME, new QQueryFilter(
          new QFilterCriteria("channelId", QCriteriaOperator.EQUALS, channelId),
-         new QFilterCriteria("lastAttemptAt", QCriteriaOperator.GREATER_THAN, now.minus(Duration.ofHours(1))))))
+         new QFilterCriteria("lastAttemptAt", QCriteriaOperator.GREATER_THAN, now.minus(Duration.ofHours(1)))))))
       {
          Integer status = execution.getValueInteger("status");
          if(ExecutionStatus.ACCEPTED.getId().equals(status) || ExecutionStatus.NEEDS_RECONCILIATION.getId().equals(status) || ExecutionStatus.RUNNING.getId().equals(status))
@@ -783,6 +834,7 @@ public class ExecutionService
     *******************************************************************************/
    public List<String> runDue(Instant now) throws QException
    {
+      requireExecutePermission();
       return (MarketingStore.trusted(() -> runDueImpl(now)));
    }
 

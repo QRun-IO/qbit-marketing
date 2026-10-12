@@ -17,8 +17,16 @@
 package com.kingsrook.qbits.marketing.content;
 
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import com.kingsrook.qbits.marketing.model.enums.FindingSeverity;
+import com.kingsrook.qbits.marketing.model.enums.FindingStatus;
+import com.kingsrook.qbits.marketing.security.MarketingInternalWrite;
+import com.kingsrook.qbits.marketing.security.MarketingPermissions;
+import com.kingsrook.qqq.backend.core.model.statusmessages.BadInputStatusMessage;
+import com.kingsrook.qqq.backend.core.utils.ValueUtils;
 import com.kingsrook.qbits.marketing.MarketingStore;
 import com.kingsrook.qbits.marketing.model.MarketingCampaign;
 import com.kingsrook.qqq.backend.core.actions.customizers.TableCustomizerInterface;
@@ -65,14 +73,56 @@ public class ProductFromCampaignCustomizer implements TableCustomizerInterface
    @Override
    public List<QRecord> preUpdate(UpdateInput updateInput, List<QRecord> records, boolean isPreview, Optional<List<QRecord>> oldRecordList) throws QException
    {
+      boolean findings = "marketing_finding".equals(updateInput.getTableName());
+      Map<Integer, QRecord> oldById = new HashMap<>();
+      for(QRecord old : oldRecordList.orElse(List.of()))
+      {
+         oldById.put(ValueUtils.getValueAsInteger(old.getValue("id")), old);
+      }
+
       for(QRecord record : records)
       {
          if(record.getValues().containsKey("campaignId"))
          {
             fill(record);
          }
+         if(findings)
+         {
+            guardBlocker(record, oldById.get(ValueUtils.getValueAsInteger(record.getValue("id"))));
+         }
       }
       return (records);
+   }
+
+
+
+   /*******************************************************************************
+    ** An open BLOCKER finding (e.g. an unsupported claim) stops approval, so
+    ** closing it or lowering its severity needs approval authority
+    ** (marketing.approve.hasAccess) - the author can't wave it away. The
+    ** readiness checker's own re-runs are internal.
+    *******************************************************************************/
+   private static void guardBlocker(QRecord record, QRecord old) throws QException
+   {
+      if(MarketingInternalWrite.isActive() || MarketingPermissions.has(MarketingPermissions.APPROVE))
+      {
+         return;
+      }
+      if(old == null)
+      {
+         old = MarketingStore.get("marketing_finding", ValueUtils.getValueAsInteger(record.getValue("id")));
+      }
+      if(old == null || !FindingSeverity.BLOCKER.getId().equals(old.getValueInteger("severity")) || !FindingStatus.OPEN.getId().equals(old.getValueInteger("status")))
+      {
+         return;
+      }
+
+      boolean closes    = record.getValues().containsKey("status") && !FindingStatus.OPEN.getId().equals(ValueUtils.getValueAsInteger(record.getValue("status")));
+      boolean downgrade = record.getValues().containsKey("severity") && !FindingSeverity.BLOCKER.getId().equals(ValueUtils.getValueAsInteger(record.getValue("severity")));
+      if(closes || downgrade)
+      {
+         record.addError(new BadInputStatusMessage("Closing or downgrading an open blocker finding needs " + MarketingPermissions.APPROVE + "."));
+      }
    }
 
 

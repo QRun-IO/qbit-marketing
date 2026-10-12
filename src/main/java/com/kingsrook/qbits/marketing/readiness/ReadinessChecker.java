@@ -236,7 +236,11 @@ public class ReadinessChecker
       }
       for(QRecord old : MarketingStore.query(MarketingFinding.TABLE_NAME, previous))
       {
-         MarketingStore.update(MarketingFinding.TABLE_NAME, new QRecord().withValue("id", old.getValue("id")).withValue("status", FindingStatus.RESOLVED.getId()));
+         com.kingsrook.qbits.marketing.security.MarketingInternalWrite.run(() ->
+         {
+            MarketingStore.update(MarketingFinding.TABLE_NAME, new QRecord().withValue("id", old.getValue("id")).withValue("status", FindingStatus.RESOLVED.getId()));
+            return (null);
+         });
       }
 
       for(MarketingFinding finding : findings)
@@ -318,6 +322,7 @@ public class ReadinessChecker
     *******************************************************************************/
    public int checkProduct(Integer productId) throws QException
    {
+      com.kingsrook.qbits.marketing.security.MarketingPermissions.require("check readiness", com.kingsrook.qbits.marketing.security.MarketingPermissions.PREPARE, com.kingsrook.qbits.marketing.security.MarketingPermissions.AGENT);
       return (MarketingStore.trusted(() -> checkProductImpl(productId)));
    }
 
@@ -327,6 +332,7 @@ public class ReadinessChecker
     *******************************************************************************/
    public int checkCampaign(Integer campaignId) throws QException
    {
+      com.kingsrook.qbits.marketing.security.MarketingPermissions.require("check readiness", com.kingsrook.qbits.marketing.security.MarketingPermissions.PREPARE, com.kingsrook.qbits.marketing.security.MarketingPermissions.AGENT);
       return (MarketingStore.trusted(() -> checkCampaignImpl(campaignId)));
    }
 

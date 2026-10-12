@@ -63,10 +63,10 @@ Then:
 | `marketing.hasAccess` | The Marketing app and its dashboard. |
 | `marketing.read` / `marketing.write` | Products, evidence, claims, audiences, campaigns, content, metrics, outcome events and findings. System-written history (revisions, approvals, executions, attempts, test deliveries, agent runs and steps) is read-only. |
 | `marketing.admin.read` / `marketing.admin.write` | Channels and the Marketing Policy (kill switches, provider, model, budgets). Preparers usually also get `marketing.admin.read`, to pick channels. |
-| `marketing.prepare.hasAccess` | Submit for Review, Check Readiness, Update Results from CRM, Load Verified Starter Data, and resolving or dismissing findings. |
+| `marketing.prepare.hasAccess` | Submit for Review, Check Readiness, Update Results from CRM, Load Verified Starter Data, and resolving or dismissing findings. Closing or downgrading an open **blocker** finding also needs `marketing.approve.hasAccess`. |
 | `marketing.approve.hasAccess` | Approve and Return to Draft. |
 | `marketing.execute.hasAccess` | Schedule, Run Now, Pause, Resume, Cancel, Reconcile, Mark as Accepted, Mark Not Sent and Retry, and Run Due Executions. |
-| `marketing.agent.hasAccess` | Plan / Draft / Check Claims / Analyze Results with Agent, and Cancel Run. |
+| `marketing.agent.hasAccess` | Plan / Draft / Check Claims / Analyze Results with Agent, and Cancel Run. The agent's draft, finding and plan tools also need the requester's `marketing.write`, and the agent only revises content that is still a Draft. |
 
 - **Optional tenant boundary:** `withProductSecurityKeyType("…")` locks every table by product. Users see only the products they hold keys for, and so does the agent, which always runs as its user.
 - **Optional four-eyes rule:** `withRequireDifferentApprover(true)` stops the author of a revision from approving it.

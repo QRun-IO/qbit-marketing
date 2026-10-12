@@ -337,12 +337,11 @@ class ApprovalAndExecutionTest extends BaseMarketingTest
    void testKillSwitchAndSchedule() throws QException
    {
       Integer executionId = approvedAndScheduled(content(campaignId, channelId, "Not now."));
-      MarketingStore.insert(new MarketingPolicy().withName(MarketingRuntime.POLICY_NAME).withExecutionEnabled(false).withKillSwitchReason("launch freeze"));
+      MarketingStore.update(MarketingPolicy.TABLE_NAME, new QRecord().withValue("id", policyId()).withValue("executionEnabled", false).withValue("killSwitchReason", "launch freeze"));
       assertThat(executions.runOne(executionId, Instant.now())).contains("switched off").contains("launch freeze");
       assertThat(status(executionId)).isEqualTo(ExecutionStatus.SCHEDULED);
 
-      MarketingStore.update(MarketingPolicy.TABLE_NAME, new QRecord().withValue("id", MarketingStore.queryBy(MarketingPolicy.TABLE_NAME, "name", MarketingRuntime.POLICY_NAME).get(0).getValue("id"))
-         .withValue("executionEnabled", true));
+      MarketingStore.update(MarketingPolicy.TABLE_NAME, new QRecord().withValue("id", policyId()).withValue("executionEnabled", true));
 
       Integer later = content(campaignId, channelId, "Later.");
       MarketingStore.update(MarketingContent.TABLE_NAME, new QRecord().withValue("id", later).withValue("scheduledFor", Instant.now().plusSeconds(86400)));

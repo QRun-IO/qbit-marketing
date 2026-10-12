@@ -162,7 +162,15 @@ Most rows carry a denormalized `productId`, so the optional product security loc
   - `marketing_record_finding`
   - `marketing_submit_plan`
 
-Each task gets only the tools it needs. No tool can approve, schedule, execute or touch the guarded tables.
+Each task gets only the tools it needs. No tool can approve, schedule, execute or touch the guarded tables. The write-proposal tools need the requester's `marketing.write`, and `marketing_save_draft` revises only content that is still a Draft.
+
+**Review safeguards:**
+- **The content edit path:** ids normalized, the old record re-read, never fail open. Execution also re-hashes the fields it is about to send.
+- **Approve is pinned:** a record whose content hash changed between the Review screen and execute is skipped.
+- **The policy fails closed.**
+- **Global limits and budgets** are counted as the system user, across all products.
+- **Worker isolation:** one failing execution is blocked without stopping the others.
+- **Open blocker findings** can only be closed or downgraded with approval authority.
 
 **Data sent to the provider:** the tool definitions, the fixed prompt, the task text and enveloped tool results. Never CRM addresses, names or contact details: the results tool aggregates, and recipients are resolved only at send time.
 

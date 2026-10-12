@@ -18,6 +18,10 @@ package com.kingsrook.qbits.marketing.security;
 
 
 import java.util.List;
+import com.kingsrook.qqq.backend.core.context.QContext;
+import com.kingsrook.qqq.backend.core.exceptions.QUserFacingException;
+import com.kingsrook.qqq.backend.core.model.session.QSession;
+import com.kingsrook.qqq.backend.core.model.session.QSystemUserSession;
 import com.kingsrook.qqq.backend.core.model.metadata.permissions.DenyBehavior;
 import com.kingsrook.qqq.backend.core.model.metadata.permissions.PermissionLevel;
 import com.kingsrook.qqq.backend.core.model.metadata.permissions.QPermissionRules;
@@ -62,6 +66,46 @@ public final class MarketingPermissions
     *******************************************************************************/
    private MarketingPermissions()
    {
+   }
+
+
+
+   /*******************************************************************************
+    ** Does the current session hold one of the permissions? The system user
+    ** (scheduler) does.
+    *******************************************************************************/
+   public static boolean has(String... permissions)
+   {
+      QSession session = QContext.getQSession();
+      if(session instanceof QSystemUserSession)
+      {
+         return (true);
+      }
+      if(session == null)
+      {
+         return (false);
+      }
+      for(String permission : permissions)
+      {
+         if(session.hasPermission(permission))
+         {
+            return (true);
+         }
+      }
+      return (false);
+   }
+
+
+
+   /*******************************************************************************
+    ** Require one of the permissions (defense in depth behind process rules).
+    *******************************************************************************/
+   public static void require(String what, String... permissions) throws QUserFacingException
+   {
+      if(!has(permissions))
+      {
+         throw (new QUserFacingException("You do not have permission to " + what + " (" + String.join(" or ", permissions) + ")."));
+      }
    }
 
 

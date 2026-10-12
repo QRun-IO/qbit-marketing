@@ -577,6 +577,7 @@ public final class MarketingTools
       @Override
       public Map<String, Object> run(MarketingToolContext context, Map<String, Object> input) throws QException
       {
+         requireWrite();
          Integer       campaignId  = requireInt(input, "campaign_id");
          Integer       channelId   = requireInt(input, "channel_id");
          String        title       = requireString(input, "title", MAX_SHORT);
@@ -642,6 +643,10 @@ public final class MarketingTools
             if(!campaignId.equals(existing.getCampaignId()))
             {
                throw (AiToolException.invalidInput("Content " + contentId + " belongs to another campaign."));
+            }
+            if(!ContentStatus.DRAFT.getId().equals(existing.getStatus()))
+            {
+               throw (AiToolException.invalidInput("Content " + contentId + " is not a draft; only drafts can be revised. Save a new draft instead."));
             }
             MarketingStore.update(MarketingContent.TABLE_NAME, new QRecord()
                .withValue("id", contentId)
@@ -738,6 +743,7 @@ public final class MarketingTools
       @Override
       public Map<String, Object> run(MarketingToolContext context, Map<String, Object> input) throws QException
       {
+         requireWrite();
          Integer           campaignId = requireInt(input, "campaign_id");
          MarketingCampaign campaign   = new MarketingCampaign(context.require(MarketingCampaign.TABLE_NAME, campaignId));
          FindingType       type       = enumValue(FindingType.class, requireString(input, "finding_type", 64), "finding_type");
@@ -808,6 +814,7 @@ public final class MarketingTools
       @Override
       public Map<String, Object> run(MarketingToolContext context, Map<String, Object> input) throws QException
       {
+         requireWrite();
          Integer           campaignId = requireInt(input, "campaign_id");
          MarketingCampaign campaign   = new MarketingCampaign(context.require(MarketingCampaign.TABLE_NAME, campaignId));
 
@@ -838,6 +845,20 @@ public final class MarketingTools
          rs.put("plan_finding_id", stored.getValueInteger("id"));
          rs.put("status", "Stored for review; nothing else changed.");
          return (rs);
+      }
+   }
+
+
+
+   /*******************************************************************************
+    ** Write-proposal tools write as the requesting user: they need
+    ** marketing.write, like the same edit by hand.
+    *******************************************************************************/
+   static void requireWrite() throws AiToolException
+   {
+      if(!com.kingsrook.qbits.marketing.security.MarketingPermissions.has(com.kingsrook.qbits.marketing.security.MarketingPermissions.WRITE))
+      {
+         throw (new AiToolException(com.kingsrook.qqq.backend.core.actions.ai.AiToolOutcome.DENIED, "The person running this agent may not write marketing data (marketing.write)."));
       }
    }
 

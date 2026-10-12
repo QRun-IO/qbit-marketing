@@ -27,7 +27,9 @@ import com.kingsrook.qqq.backend.core.actions.tables.GetAction;
 import com.kingsrook.qqq.backend.core.actions.tables.InsertAction;
 import com.kingsrook.qqq.backend.core.actions.tables.QueryAction;
 import com.kingsrook.qqq.backend.core.actions.tables.UpdateAction;
+import com.kingsrook.qqq.backend.core.context.CapturedContext;
 import com.kingsrook.qqq.backend.core.context.QContext;
+import com.kingsrook.qqq.backend.core.model.session.QSystemUserSession;
 import com.kingsrook.qqq.backend.core.exceptions.QException;
 import com.kingsrook.qqq.backend.core.exceptions.QUserFacingException;
 import com.kingsrook.qqq.backend.core.model.actions.tables.count.CountInput;
@@ -205,6 +207,28 @@ public final class MarketingStore
       try(CorePermissionEnforcer.AuthorizedScope ignored = CorePermissionEnforcer.openAuthorizedScope())
       {
          return (body.run());
+      }
+   }
+
+
+
+   /*******************************************************************************
+    ** Run a read as the system user (all record-lock keys): for limits and
+    ** budgets that are global, so a user who sees only some products can't
+    ** see - and exceed - only part of them. Never used to return data to a
+    ** user or a model.
+    *******************************************************************************/
+   public static <T> T asSystem(MarketingInternalWrite.Body<T> body) throws QException
+   {
+      CapturedContext previous = QContext.capture();
+      try
+      {
+         QContext.init(QContext.getQInstance(), new QSystemUserSession());
+         return (body.run());
+      }
+      finally
+      {
+         QContext.init(previous);
       }
    }
 

@@ -181,7 +181,7 @@ public final class MarketingActions
          "item(s) will be submitted for review", r -> statusIs(r, ContentStatus.DRAFT), r -> approvals.submitForReview(r.getValueInteger("id"))));
       actions.add(new SimpleAction(APPROVE, "Approve", MarketingContent.TABLE_NAME, "verified", MarketingPermissions.APPROVE_BASE,
          "item(s) will be approved exactly as shown (text, destination, recipients, schedule)", r -> statusIs(r, ContentStatus.IN_REVIEW),
-         r -> approvals.approve(r.getValueInteger("id"), null)));
+         r -> approvals.approve(r.getValueInteger("id"), null)).withPinnedField("contentHash"));
       actions.add(new SimpleAction(RETURN_TO_DRAFT, "Return to Draft", MarketingContent.TABLE_NAME, "undo", MarketingPermissions.APPROVE_BASE,
          "item(s) will return to draft (approvals revoked, pending executions cancelled)",
          r -> statusIn(r, Set.of(ContentStatus.IN_REVIEW, ContentStatus.APPROVED, ContentStatus.SCHEDULED, ContentStatus.PAUSED, ContentStatus.FAILED)),
@@ -266,6 +266,10 @@ public final class MarketingActions
          r -> FindingStatus.OPEN.getId().equals(r.getValueInteger("status")) ? null : "it is not open",
          r ->
          {
+            if(com.kingsrook.qbits.marketing.model.enums.FindingSeverity.BLOCKER.getId().equals(r.getValueInteger("severity")))
+            {
+               MarketingPermissions.require("close a blocker finding", MarketingPermissions.APPROVE);
+            }
             MarketingStore.update(MarketingFinding.TABLE_NAME, new QRecord().withValue("id", r.getValue("id")).withValue("status", status.getId()));
             return ("marked " + status.getLabel().toLowerCase());
          }));

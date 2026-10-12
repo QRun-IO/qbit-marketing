@@ -231,7 +231,12 @@ public class QbitCrmGateway implements MarketingCrmGateway
          throw (new QUserFacingException("The CRM has no \"" + NOTE_ACTIVITY_TYPE_NAME + "\" activity type to log marketing activities with."));
       }
 
-      MarketingStore.insert(ACTIVITY_TABLE, new QRecord()
+      //////////////////////////////////////////////////////////////////
+      // written with the user's CRM permissions, not Marketing's scope //
+      //////////////////////////////////////////////////////////////////
+      com.kingsrook.qqq.backend.core.model.actions.tables.insert.InsertInput insert = new com.kingsrook.qqq.backend.core.model.actions.tables.insert.InsertInput(ACTIVITY_TABLE);
+      insert.withPermissionEnforcement(com.kingsrook.qqq.backend.core.actions.permissions.PermissionEnforcement.ENFORCE);
+      insert.withRecord(new QRecord()
          .withValue("activityTypeId", types.get(0).getValueInteger("id"))
          .withValue("subject", subject.length() > 500 ? subject.substring(0, 500) : subject)
          .withValue("description", description)
@@ -239,6 +244,11 @@ public class QbitCrmGateway implements MarketingCrmGateway
          .withValue("ownerUserId", MarketingStore.currentUserId())
          .withValue("isCompleted", true)
          .withValue("completedDate", Instant.now()));
+      QRecord stored = new com.kingsrook.qqq.backend.core.actions.tables.InsertAction().execute(insert).getRecords().get(0);
+      if(stored.getErrors() != null && !stored.getErrors().isEmpty())
+      {
+         throw (new QUserFacingException("The CRM refused the activity: " + stored.getErrors().get(0).getMessage()));
+      }
    }
 
 

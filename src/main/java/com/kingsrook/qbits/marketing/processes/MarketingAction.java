@@ -60,6 +60,8 @@ public abstract class MarketingAction
 
    private static final Map<String, MarketingAction> REGISTRY = new HashMap<>();
 
+   static final String PINNED_VALUES = "marketingPinnedValues";
+
    private final String  processName;
    private final String  label;
    private final String  tableName;
@@ -67,6 +69,7 @@ public abstract class MarketingAction
    private final String  permissionBase;
    private final String  okLabel;
    private Integer       maxRecords;
+   private String        pinnedField;
 
 
 
@@ -106,6 +109,19 @@ public abstract class MarketingAction
    public MarketingAction withMaxRecords(Integer maxRecords)
    {
       this.maxRecords = maxRecords;
+      return (this);
+   }
+
+
+
+   /*******************************************************************************
+    ** Pin a field between Review and execute: if a record's value changed after
+    ** the person saw the Review screen (e.g. the content hash), it is skipped
+    ** instead of acted on - nobody approves a version they did not see.
+    *******************************************************************************/
+   public MarketingAction withPinnedField(String pinnedField)
+   {
+      this.pinnedField = pinnedField;
       return (this);
    }
 
@@ -180,6 +196,26 @@ public abstract class MarketingAction
       {
          action = forProcess(input.getProcessName());
          ok.setMessage(action.okLabel);
+
+         ////////////////////////////////////////////////////////////////////
+         // pinned field: remember it on the Review (validate) step, and   //
+         // compare at execute                                              //
+         ////////////////////////////////////////////////////////////////////
+         boolean             validating = StreamedETLWithFrontendProcess.STEP_NAME_VALIDATE.equals(input.getStepName());
+         Map<String, Object> pinned     = null;
+         if(action.pinnedField != null)
+         {
+            String json = input.getValueString(PINNED_VALUES);
+            try
+            {
+               pinned = json == null ? new LinkedHashMap<>() : com.kingsrook.qqq.backend.core.utils.JsonUtils.toObject(json, new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String, Object>>() {});
+            }
+            catch(java.io.IOException e)
+            {
+               throw (new QException("Unreadable pinned values", e));
+            }
+         }
+
          for(QRecord record : input.getRecords())
          {
             String reason;
@@ -192,6 +228,20 @@ public abstract class MarketingAction
                reason = e.getMessage();
             }
 
+            if(reason == null && pinned != null)
+            {
+               String key   = String.valueOf(record.getValue("id"));
+               String value = record.getValueString(action.pinnedField);
+               if(validating)
+               {
+                  pinned.put(key, value);
+               }
+               else if(pinned.containsKey(key) && !java.util.Objects.equals(pinned.get(key), value))
+               {
+                  reason = "it changed after you reviewed it; review it again";
+               }
+            }
+
             if(reason == null)
             {
                taken++;
@@ -202,6 +252,11 @@ public abstract class MarketingAction
             {
                skipped.computeIfAbsent(reason, r -> new ProcessSummaryLine(Status.WARNING, 0, "skipped: " + r)).incrementCountAndAddPrimaryKey(record.getValue("id"));
             }
+         }
+
+         if(pinned != null && validating)
+         {
+            output.addValue(PINNED_VALUES, com.kingsrook.qqq.backend.core.utils.JsonUtils.toJson(pinned));
          }
       }
 

@@ -25,6 +25,8 @@
 | `staleSourceDays` | 90 | When evidence counts as stale. |
 | `crmGateway` | none | `QbitCrmGateway` for qbit-crm, or your own `MarketingCrmGateway`. |
 
+**Fail closed:** without the policy row, or unless a switch is explicitly on, the agent and execution are **off**. **Load Verified Starter Data** creates the row, or you can create it by hand. Configuration Status shows the policy state.
+
 **Runtime overrides:** the single **Marketing Policy** row named `default` (settings, `marketing.admin.*`) holds:
 - `agentEnabled` and `executionEnabled` (kill switches, with a reason)
 - `providerName` and `model`
