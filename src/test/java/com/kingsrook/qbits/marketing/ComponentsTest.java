@@ -168,7 +168,7 @@ class ComponentsTest extends BaseMarketingTest
    void testKernelAdapter() throws Exception
    {
       Integer productId = product("k");
-      MarketingStore.insert(new MarketingClaim().withProductId(productId).withStatus(ClaimStatus.RELEASED.getId()).withClaimText("api_key=sk-live-ABCDEF0123456789abcdef0123"));
+      MarketingStore.insert(new MarketingClaim().withProductId(productId).withStatus(ClaimStatus.RELEASED.getId()).withClaimText("api_key=sk-FAKE-TEST-NOT-A-REAL-KEY-0000"));
 
       java.lang.reflect.Constructor<?> constructor = Class.forName("com.kingsrook.qbits.marketing.agent.KernelToolRegistration$KernelAdapter")
          .getDeclaredConstructor(com.kingsrook.qbits.marketing.agent.tools.MarketingAgentTool.class);
@@ -178,7 +178,7 @@ class ComponentsTest extends BaseMarketingTest
       AiToolKernelSettings settings = new AiToolKernelSettings();
       AiToolContext context = new AiToolContext(qInstance, settings, new AiExposurePolicy(settings), new AiRedactor(List.of()), new AiToolResult());
       Map<String, Object> data = adapter.execute(context, new AiToolInput(Map.of("product_id", productId)));
-      assertThat(String.valueOf(data)).contains("It does X.").doesNotContain("sk-live-ABCDEF0123456789abcdef0123");
+      assertThat(String.valueOf(data)).contains("It does X.").doesNotContain("sk-FAKE-TEST-NOT-A-REAL-KEY-0000");
       assertThat(adapter.getDefinition().getKind()).isEqualTo(com.kingsrook.qqq.backend.core.actions.ai.AiToolKind.READ);
       assertThat(KernelToolRegistration.register(qInstance, MarketingTools.readTools())).as("RC.4 has no registry").isZero();
    }

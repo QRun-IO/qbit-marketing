@@ -154,17 +154,17 @@ class OpenAiCompatibleModelProviderTest
    @Test
    void testErrorsAndSecrecy()
    {
-      OpenAiCompatibleModelProvider provider = provider("sk-test-1234567890");
-      assertThat(provider.toString()).doesNotContain("sk-test-1234567890");
+      OpenAiCompatibleModelProvider provider = provider("sk-FAKE-TEST-KEY-000000");
+      assertThat(provider.toString()).doesNotContain("sk-FAKE-TEST-KEY-000000");
 
-      responses.add(new Object[] { 401, "{\"error\":{\"type\":\"invalid_api_key\",\"message\":\"Incorrect API key provided: sk-test-1234567890\"}}" });
+      responses.add(new Object[] { 401, "{\"error\":{\"type\":\"invalid_api_key\",\"message\":\"Incorrect API key provided: sk-FAKE-TEST-KEY-000000\"}}" });
       assertThatThrownBy(() -> provider.stream(request(), text -> {}).await(Duration.ofSeconds(5)))
          .isInstanceOfSatisfying(ModelProviderException.class, e ->
          {
             assertThat(e.getKind()).isEqualTo(ModelProviderException.Kind.AUTHENTICATION);
             assertThat(e.getMessage()).contains("401").contains("invalid_api_key").doesNotContain("sk-test");
          });
-      assertThat(lastAuth.get()).isEqualTo("Bearer sk-test-1234567890");
+      assertThat(lastAuth.get()).isEqualTo("Bearer sk-FAKE-TEST-KEY-000000");
 
       responses.add(new Object[] { 429, "{\"error\":{\"type\":\"rate_limit_exceeded\"}}" });
       assertThatThrownBy(() -> provider.stream(request(), text -> {}).await(Duration.ofSeconds(5)))

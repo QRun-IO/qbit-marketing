@@ -4,7 +4,7 @@ This file provides guidance to Codex when working with code in this repository.
 
 ## Project Overview
 
-**QBit Marketing**: QQQ QBit: marketing for QQQ applications. Design: a design spec still to be published in QRun-IO/qqq docs/specs. Implementation in progress.
+**QBit Marketing**: marketing for QQQ applications. It covers products and evidence, campaigns, content with revisions, hash-bound human approval, durable controlled execution through transports, honest measurement, a CRM gateway, and a marketing agent that prepares work but never publishes. Version 0.1.0 is unreleased. See `docs/DESIGN.md` (architecture), `docs/OPERATIONS.md` (configuration, run-books, limits) and `docs/STARTER-DATA.md`.
 
 ## Build Commands
 
@@ -16,7 +16,18 @@ This file provides guidance to Codex when working with code in this repository.
 
 ## Architecture
 
-**Entry point:** `MarketingQBitProducer implements QBitMetaDataProducer<MarketingQBitConfig>` in `com.kingsrook.qbits.marketing`. Component producers in this package (and below) are found by package scanning.
+**Entry point:** `MarketingQBitProducer implements QBitMetaDataProducer<MarketingQBitConfig>` in `com.kingsrook.qbits.marketing`. It builds everything explicitly (no package scanning):
+- `metadata.MarketingMetaDataBuilder`: tables, joins, child lists, PVSes and the app.
+- `processes.*`: streamed-ETL record actions, plus two table actions.
+- `widgets.MarketingWidgets`
+- `MarketingRuntime`: the transports, providers, CRM gateway and limits.
+
+Services: `approval.ApprovalService`, `execution.ExecutionService`, `measurement.*`, `readiness.ReadinessChecker`, `agent.MarketingAgentService` (tools in `agent.tools`).
+
+- **Generated code:** entities (`model/`), enums (`model/enums/`) and the DDL (`docs/ddl/postgres.sql`, `src/test/resources/marketing-h2.sql`) come from `scripts/generate-model.py`. Edit the spec and regenerate (`python -I scripts/generate-model.py .`); never hand-edit the generated files.
+- **System-written tables** (revisions, approvals, executions, attempts, test deliveries, agent runs and steps) are written only inside `MarketingInternalWrite.run(...)`.
+- **Service entry points** check their permission, then run in `MarketingStore.trusted(...)`.
+- **Agent tools** read with `PermissionEnforcement.ENFORCE`.
 
 ## Naming (owner rule)
 
