@@ -21,8 +21,9 @@
          "transportName": "qqq_email",
          "isActive": true,
          "allowsAutomation": true,
-         "aiContentPolicy": "UNKNOWN",
-         "rulesSummary": "Only CRM contacts who are subscribed to the chosen list and have current email consent; one message per recipient; at most 50 recipients per execution. Record the team's policy on AI-assisted email before approving agent drafts here.",
+         "aiContentPolicy": "ALLOWED_WITH_DISCLOSURE",
+         "rulesSummary": "Only CRM contacts who are subscribed to the chosen list and have current email consent; one message per recipient; at most 50 recipients per execution. Team policy (2026-10-13): agent drafts are allowed with the AI disclosure line in the body; a person approves every send.",
+         "rulesVerifiedDate": "2026-10-13",
          "rateLimitPerHour": 50,
          "maxRecipientsPerExecution": 50
       },
@@ -31,16 +32,18 @@
          "channelType": "BLOG",
          "isActive": true,
          "allowsAutomation": false,
-         "aiContentPolicy": "UNKNOWN",
-         "rulesSummary": "Our own site. No publishing connector is configured: approved posts are published by a person. Record the team's policy on AI-assisted posts."
+         "aiContentPolicy": "ALLOWED_WITH_DISCLOSURE",
+         "rulesSummary": "Our own site. No publishing connector is configured: approved posts are published by a person. Team policy (2026-10-13): agent drafts are allowed with the AI disclosure line in the post.",
+         "rulesVerifiedDate": "2026-10-13"
       },
       {
          "name": "GitHub release notes (posted by hand)",
          "channelType": "RELEASE_NOTES",
          "isActive": true,
          "allowsAutomation": false,
-         "aiContentPolicy": "UNKNOWN",
-         "rulesSummary": "Release notes on the product's GitHub releases page, written and published by a maintainer. No connector is configured."
+         "aiContentPolicy": "ALLOWED",
+         "rulesSummary": "Release notes on the product's GitHub releases page, published by a maintainer. No connector is configured. Team policy (2026-10-13): agent drafts are allowed without a disclosure line, because a maintainer checks every line against the release's merged changes before publishing.",
+         "rulesVerifiedDate": "2026-10-13"
       }
    ],
 
@@ -49,6 +52,7 @@
       "agentEnabled": true,
       "executionEnabled": true,
       "dailyTokenLimit": 1000000,
+      "monthlyCostLimitMicros": 25000000,
       "maxConcurrentAgentRuns": 2,
       "maxToolCallsPerRun": 24
    },
