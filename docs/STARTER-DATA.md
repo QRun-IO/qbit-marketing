@@ -61,8 +61,11 @@ Re-verify before use. The readiness check flags sources older than `staleSourceD
 
 ## Channels and policy
 
-- **Controlled test sink:** test only.
-- **Email to opted-in CRM list:** needs a configured, verified QQQ messaging provider. The team's AI-content policy is *Unknown* until recorded.
-- **Project blog (posted by hand)** and **GitHub release notes (posted by hand):** no connectors. Their AI policies are *Unknown* until the team records them.
-- **No community channels:** none are seeded, because their current rules have not been checked.
-- **Policy row `default`:** agent and execution on, 1,000,000 agent tokens per day, 2 concurrent runs, 24 tool calls per run.
+Channel AI policies follow the owner decisions in `DESIGN.md` (2026-10-12, recorded 2026-10-13).
+
+- **Controlled test sink:** test only. AI content *Allowed*.
+- **Email to opted-in CRM list:** needs a configured, verified QQQ messaging provider (Amazon SES). AI content *Allowed with disclosure*.
+- **Project blog (posted by hand):** no connector. AI content *Allowed with disclosure*.
+- **GitHub release notes (posted by hand):** no connector. AI content *Allowed*; a maintainer checks every line against the release.
+- **No community channels:** none are seeded, because their current rules have not been checked. Agent-written text is *Not allowed* on them by policy.
+- **Policy row `default`:** agent and execution on, 1,000,000 agent tokens per day, USD 25 monthly cost limit, 2 concurrent runs, 24 tool calls per run.

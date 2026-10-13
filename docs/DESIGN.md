@@ -186,3 +186,33 @@ The dashboard's Configuration Status widget (`MarketingRuntime.describeIntegrati
 - *Available*
 
 No live call is made to verify a provider or transport.
+
+## Owner decisions (2026-10-12): all recommendations accepted
+
+The owner accepted every recommendation on 2026-10-12. The concrete defaults, recorded 2026-10-13:
+
+**Providers**
+
+| Integration | Default | Why |
+|---|---|---|
+| Model provider | Claude through `qbit-assistant-provider-anthropic`, model `claude-sonnet-5-5`, set by the host (`ANTHROPIC_API_KEY`, `MARKETING_MODEL`) | The existing provider SPI and pricing table; no second abstraction. |
+| OpenAI-compatible provider | Not configured | Optional; register it only for a specific need (for example a local Ollama for experiments). With two providers the host must name one. |
+| Email transport | QQQ messaging over Amazon SES, from a verified `qrun.io` domain (SPF, DKIM, DMARC), from-address `news@qrun.io`, replies to `hello@qrun.io` | SES is a low-cost, reliable sender and QQQ messaging supports it directly. Reports *Configured, not verified* until one end-to-end test send, then the host sets `withVerifiedOperational(true)`. |
+| Social and community posting | No transports. Posted by hand | No connector exists, and each community's rules must be checked before any automation. |
+| Measurement | Outcome events from the CRM import and by hand; no third-party analytics provider | Matches the honest-measurement rules: not instrumented shows *Not measured*. |
+| CRM gateway | `QbitCrmGateway` (qbit-crm) | What Voyage's Marketing wiring uses. |
+
+**AI-content channel policy**
+
+- The agent drafts and a person approves every publication. The agent never publishes.
+- **Owned channels:** email to the opted-in CRM list and the project blog are *Allowed with disclosure*, with the default `aiDisclosureText` ("Prepared with AI assistance.").
+- **GitHub release notes:** *Allowed*, without disclosure. A maintainer checks every line against the release's merged changes before publishing.
+- **Third-party community channels** (forums, Reddit, Hacker News, social networks): *Not allowed* for agent-written text. A new community channel starts *Not allowed*, or *Unknown* until its current rules are read and recorded with a verification date. Never loosen one without its rules on file.
+- **Test sink:** *Allowed*.
+
+**Policy row and approval**
+
+- `default` policy: agent and execution on, 1,000,000 tokens a day, a **USD 25 monthly cost limit** (`monthlyCostLimitMicros` 25,000,000), 2 concurrent runs, 24 tool calls per run.
+- `requireDifferentApprover` stays `false`: the team is one person. Turn it on when a second approver exists.
+
+The starter data (`marketing-starter-data.json`) carries these channel policies, verification dates and the cost limit.
