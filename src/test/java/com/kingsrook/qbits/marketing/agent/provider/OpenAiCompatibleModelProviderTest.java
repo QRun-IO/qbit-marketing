@@ -31,7 +31,11 @@ import com.kingsrook.qbits.assistant.provider.ModelProviderException;
 import com.kingsrook.qbits.assistant.provider.ModelRequest;
 import com.kingsrook.qbits.assistant.provider.ModelResponse;
 import com.kingsrook.qbits.assistant.provider.ModelToolDefinition;
+import com.kingsrook.qbits.assistant.provider.ProviderSettings;
 import com.kingsrook.qbits.assistant.provider.SystemBlock;
+import com.kingsrook.qbits.assistant.provider.openai.OpenAiCompatibleModelProvider;
+import com.kingsrook.qbits.marketing.MarketingQBitConfig;
+import com.kingsrook.qqq.backend.core.instances.QMetaDataVariableInterpreter;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,8 +45,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 
 /*******************************************************************************
- ** The OpenAI-compatible provider against a local fixture server (no network,
- ** no real key): request mapping, tool calls, usage, error kinds, and the key
+ ** The published OpenAI-compatible provider against a local fixture server
+ ** with no real key: request mapping, tool calls, usage, error kinds, and the key
  ** never appearing in toString.
  *******************************************************************************/
 class OpenAiCompatibleModelProviderTest
@@ -94,8 +98,9 @@ class OpenAiCompatibleModelProviderTest
     *******************************************************************************/
    private OpenAiCompatibleModelProvider provider(String key)
    {
-      return (OpenAiCompatibleModelProvider.builder().name("local").baseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/v1").apiKey(key)
-         .requestTimeout(Duration.ofSeconds(5)).build());
+      return (new OpenAiCompatibleModelProvider(new ProviderSettings().withKind("OPENAI_COMPATIBLE")
+         .withBaseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/v1")
+         .withApiKey(key == null ? null : new QMetaDataVariableInterpreter().interpret(key)).withRequestTimeoutSeconds(5)));
    }
 
 
@@ -105,7 +110,7 @@ class OpenAiCompatibleModelProviderTest
     *******************************************************************************/
    private static ModelRequest request()
    {
-      return (new ModelRequest().withModel("test-model").withMaxTokens(100)
+      return (new ModelRequest().withModel("test-model").withMaxTokens(100).withStreaming(false)
          .withSystem(List.of(new SystemBlock("Be truthful.", null)))
          .withTools(List.of(new ModelToolDefinition().withName("marketing_list_channels").withDescription("Channels")
             .withInputSchema(Map.of("type", "object", "properties", Map.of()))))
@@ -129,7 +134,11 @@ class OpenAiCompatibleModelProviderTest
           "usage":{"prompt_tokens":120,"completion_tokens":30,"prompt_tokens_details":{"cached_tokens":20}}}
          """ });
 
-      ModelResponse response = provider("${env.MARKETING_TEST_KEY_THAT_IS_NOT_SET}").stream(request(), text -> {}).await(Duration.ofSeconds(5));
+      MarketingQBitConfig config = new MarketingQBitConfig()
+         .withModelProvider(provider("${env.MARKETING_TEST_KEY_THAT_IS_NOT_SET}"))
+         .withProviderName("openai-compatible").withModel("configured-model");
+      ModelResponse response = config.getModelProviders().get(config.getProviderName())
+         .stream(request().withModel(config.getModel()), text -> {}).await(Duration.ofSeconds(5));
       assertThat(response.getStopReason()).isEqualTo(ModelResponse.STOP_TOOL_USE);
       assertThat(response.getText()).isEqualTo("Checking.");
       assertThat(response.getToolUses()).hasSize(1);
@@ -141,7 +150,7 @@ class OpenAiCompatibleModelProviderTest
 
       String body = lastBody.get();
       assertThat(body).contains("\"role\":\"system\"").contains("Be truthful.").contains("\"tool_calls\"").contains("\"role\":\"tool\"").contains("\"tool_call_id\":\"call_1\"")
-         .contains("\"max_completion_tokens\":100").contains("marketing_list_channels");
+         .contains("\"max_tokens\":100").contains("marketing_list_channels").contains("\"model\":\"configured-model\"");
       assertThat(lastAuth.get()).as("an unset key reference means no Authorization header").isNull();
    }
 
@@ -162,7 +171,8 @@ class OpenAiCompatibleModelProviderTest
          .isInstanceOfSatisfying(ModelProviderException.class, e ->
          {
             assertThat(e.getKind()).isEqualTo(ModelProviderException.Kind.AUTHENTICATION);
-            assertThat(e.getMessage()).contains("401").contains("invalid_api_key").doesNotContain("sk-test");
+            assertThat(e.getHttpStatus()).isEqualTo(401);
+            assertThat(e.getMessage()).doesNotContain("sk-FAKE-TEST-KEY-000000");
          });
       assertThat(lastAuth.get()).isEqualTo("Bearer sk-FAKE-TEST-KEY-000000");
 
@@ -174,8 +184,9 @@ class OpenAiCompatibleModelProviderTest
       assertThatThrownBy(() -> provider.stream(request(), text -> {}).await(Duration.ofSeconds(5)))
          .isInstanceOfSatisfying(ModelProviderException.class, e -> assertThat(e.getKind()).isEqualTo(ModelProviderException.Kind.INVALID_REQUEST));
 
-      responses.add(new Object[] { 200, "{\"choices\":[{\"finish_reason\":\"content_filter\",\"message\":{\"content\":\"\"}}]}" });
-      assertThat(OpenAiCompatibleModelProvider.toException(503, "").getKind()).isEqualTo(ModelProviderException.Kind.OVERLOADED);
+      responses.add(new Object[] { 503, "" });
+      assertThatThrownBy(() -> provider.stream(request(), text -> {}).await(Duration.ofSeconds(5)))
+         .isInstanceOfSatisfying(ModelProviderException.class, e -> assertThat(e.getKind()).isEqualTo(ModelProviderException.Kind.OVERLOADED));
    }
 
 
@@ -194,6 +205,31 @@ class OpenAiCompatibleModelProviderTest
       ModelResponse response = provider(null).stream(request(), streamed::add).await(Duration.ofSeconds(5));
       assertThat(response.getStopReason()).isEqualTo(ModelResponse.STOP_END_TURN);
       assertThat(streamed).containsExactly("Done.");
+   }
+
+
+
+   /*******************************************************************************
+    ** The agent's default streaming mode receives text and usage from SSE.
+    *******************************************************************************/
+   @Test
+   void testStreaming() throws Exception
+   {
+      responses.add(new Object[] { 200, """
+         data: {"choices":[{"index":0,"delta":{"content":"Done."},"finish_reason":null}]}
+
+         data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":3}}
+
+         data: [DONE]
+
+         """ });
+      List<String> streamed = new ArrayList<>();
+      ModelResponse response = provider(null).stream(request().withStreaming(true), streamed::add).await(Duration.ofSeconds(5));
+      assertThat(streamed).containsExactly("Done.");
+      assertThat(response.getText()).isEqualTo("Done.");
+      assertThat(response.getUsage().getInputTokens()).isEqualTo(12);
+      assertThat(response.getUsage().getOutputTokens()).isEqualTo(3);
+      assertThat(lastBody.get()).contains("\"stream\":true");
    }
 
 }

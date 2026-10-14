@@ -22,17 +22,23 @@
       <maven.compiler.source>21</maven.compiler.source>
       <maven.compiler.target>21</maven.compiler.target>
       <jacoco.version>0.8.15</jacoco.version>
-      <!-- The model-provider SPI (AssistantModelProvider), the scripted test   -->
-      <!-- provider and the price table come from qbit-assistant; marketing    -->
-      <!-- reuses them instead of a second provider abstraction.               -->
-      <qbit-assistant.version>0.1.0-RC.2</qbit-assistant.version>
+      <!-- Share the provider SPI and pricing without installing the assistant runtime. -->
+      <qbit-assistant.version>0.1.0-RC.11</qbit-assistant.version>
+      <qbit.guardrails.enforce>true</qbit.guardrails.enforce>
+      <qbit.guardrails.strictUiApiRoutes>true</qbit.guardrails.strictUiApiRoutes>
+      <!-- 2.1.0 matches package prefixes, not class names; provider-api owns ModelPricing. -->
+      <!-- TEMPORARY: qbit-email internals until it publishes an API (QRun-IO/qbit-marketing#13). -->
+      <qbit.guardrails.allowedApiPackages>com.kingsrook.qbits.objectstorage.api,com.kingsrook.qbits.assistant.provider,com.kingsrook.qbits.assistant.engine,com.kingsrook.qbits.email</qbit.guardrails.allowedApiPackages>
+      <qbit.guardrails.allowedQbitArtifacts>com.kingsrook.qbits:qbit-object-storage,com.kingsrook.qbits:*-api,com.kingsrook.qbits:qbit-assistant-provider-openai,com.kingsrook.qbits:qbit-email</qbit.guardrails.allowedQbitArtifacts>
+      <!-- qbit-email from Maven Central -->
+      <qbit-email.version>0.1.0-RC.1</qbit-email.version>
       <h2.version>2.3.232</h2.version>
    </properties>
 
    <parent>
       <groupId>com.kingsrook</groupId>
       <artifactId>qbit-build-parent</artifactId>
-      <version>2.0.0</version>
+      <version>2.1.0</version>
    </parent>
 
    <groupId>com.kingsrook.qbits</groupId>
@@ -79,8 +85,21 @@
 
       <dependency>
          <groupId>com.kingsrook.qbits</groupId>
-         <artifactId>qbit-assistant</artifactId>
+         <artifactId>qbit-assistant-provider-api</artifactId>
          <version>${qbit-assistant.version}</version>
+      </dependency>
+      <dependency>
+         <groupId>com.kingsrook.qbits</groupId>
+         <artifactId>qbit-assistant-provider-openai</artifactId>
+         <version>${qbit-assistant.version}</version>
+      </dependency>
+
+      <!-- optional: email through qbit-email when it is produced in the host instance (QbitEmailTransport) -->
+      <dependency>
+         <groupId>com.kingsrook.qbits</groupId>
+         <artifactId>qbit-email</artifactId>
+         <version>${qbit-email.version}</version>
+         <optional>true</optional>
       </dependency>
 
       <!-- tests: the RDBMS backend over H2 proves the DDL and persistence across a restart -->
@@ -177,14 +196,14 @@
    <profiles>
       <!-- Built against qqq 4.1 (QBitMetaDataProducer). Until qbit-build-parent  -->
       <!-- imports the released 4.1 BOM, this profile is active by default and     -->
-      <!-- imports qqq-bom-pom 4.1.0-RC.4 ahead of the parent's 4.0.0 BOM.         -->
+      <!-- imports qqq-bom-pom 4.1.0-RC.6 ahead of the parent's 4.0.0 BOM.         -->
       <profile>
          <id>qqq-snapshot</id>
          <activation>
             <activeByDefault>true</activeByDefault>
          </activation>
          <properties>
-            <qqq.snapshot.version>4.1.0-RC.4</qqq.snapshot.version>
+            <qqq.snapshot.version>4.1.0-RC.6</qqq.snapshot.version>
          </properties>
          <dependencyManagement>
             <dependencies>

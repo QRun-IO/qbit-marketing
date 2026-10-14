@@ -19,7 +19,7 @@ The work is truthful and auditable: facts come from sources with dates, people a
 | From | Reused for |
 |---|---|
 | **qbit-assistant** (0.1.0-RC.2) | The model-provider SPI: `AssistantModelProvider`, `ModelRequest` / `ModelResponse` / `ModelPart`, `StreamHandle`, `ModelProviderException` with its retryable kinds, and `ModelUsage`. Also the Claude provider (`qbit-assistant-provider-anthropic`), `ScriptedModelProvider` for tests and demos, and `ModelPricing` for cost. Marketing adds an OpenAI-compatible provider that implements the same SPI. There is no second provider abstraction. |
-| **QQQ AI tool kernel** (qqq#1078, core) | The tool contract: `AbstractAiTool` / `AiToolKind` (READ, WRITE_PROPOSAL), `AiToolOutcome`, the `qqq_data` untrusted-data envelope (`AiDataEnvelope`), secret redaction (`AiRedactor`), strict input keys, and running as the user's session. The kernel's tool set is fixed in RC.4. So QRun-IO/qqq#1096 adds `AiToolRegistry`; Marketing registers its read tools there when QQQ has it and otherwise runs them in its own runner with the same contract. |
+| **QQQ AI tool kernel** (qqq#1078, core) | The tool contract: `AbstractAiTool` / `AiToolKind` (READ, WRITE_PROPOSAL), `AiToolOutcome`, the `qqq_data` untrusted-data envelope (`AiDataEnvelope`), secret redaction (`AiRedactor`), strict input keys, and running as the user's session. The RC.6 baseline includes `AiToolRegistry` (QRun-IO/qqq#1096); Marketing contributes its read tools there and runs its own agent tools with the same contract. |
 | **QQQ core permission enforcement** (qqq#1061) | Agent tools read with `PermissionEnforcement.ENFORCE`. Service entry points check their step's permission, then run as trusted internal work in an authorized scope, as QQQ does for calls nested in a core action. Record security locks always apply. |
 | **qbit-assistant / sql-workbench metadata builders** | Explicit builder-produced tables (not annotation scanning), snake_case `marketing_*` names, QQQ standard permission suffixes, `DenyBehavior.HIDDEN`, read-only system tables, record locks, reference DDL in `docs/ddl`, `tableMetaDataCustomizer` and `inferBackendNames`. |
 | **Website-Backend admin conventions** | Processes are table and record actions, never nav items, with plain labels. Record actions use `StreamedETLWithFrontendProcess` with standard summary lines. App homes are real-data dashboards built from ≤3-column full-width tables. Links use the Next route grammar (`AiLinkBuilder`). |
@@ -186,3 +186,33 @@ The dashboard's Configuration Status widget (`MarketingRuntime.describeIntegrati
 - *Available*
 
 No live call is made to verify a provider or transport.
+
+## Owner decisions (2026-10-12): all recommendations accepted
+
+The owner accepted every recommendation on 2026-10-12. The concrete defaults, recorded 2026-10-13:
+
+**Providers**
+
+| Integration | Default | Why |
+|---|---|---|
+| Model provider | Claude through `qbit-assistant-provider-anthropic`, model `claude-sonnet-5-5`, set by the host (`ANTHROPIC_API_KEY`, `MARKETING_MODEL`) | The existing provider SPI and pricing table; no second abstraction. |
+| OpenAI-compatible provider | Not configured | Optional; register it only for a specific need (for example a local Ollama for experiments). With two providers the host must name one. |
+| Email transport | QQQ messaging over Amazon SES, from a verified `qrun.io` domain (SPF, DKIM, DMARC), from-address `news@qrun.io`, replies to `hello@qrun.io` | SES is a low-cost, reliable sender and QQQ messaging supports it directly. Reports *Configured, not verified* until one end-to-end test send, then the host sets `withVerifiedOperational(true)`. |
+| Social and community posting | No transports. Posted by hand | No connector exists, and each community's rules must be checked before any automation. |
+| Measurement | Outcome events from the CRM import and by hand; no third-party analytics provider | Matches the honest-measurement rules: not instrumented shows *Not measured*. |
+| CRM gateway | `QbitCrmGateway` (qbit-crm) | What Voyage's Marketing wiring uses. |
+
+**AI-content channel policy**
+
+- The agent drafts and a person approves every publication. The agent never publishes.
+- **Owned channels:** email to the opted-in CRM list and the project blog are *Allowed with disclosure*, with the default `aiDisclosureText` ("Prepared with AI assistance.").
+- **GitHub release notes:** *Allowed*, without disclosure. A maintainer checks every line against the release's merged changes before publishing.
+- **Third-party community channels** (forums, Reddit, Hacker News, social networks): *Not allowed* for agent-written text. A new community channel starts *Not allowed*, or *Unknown* until its current rules are read and recorded with a verification date. Never loosen one without its rules on file.
+- **Test sink:** *Allowed*.
+
+**Policy row and approval**
+
+- `default` policy: agent and execution on, 1,000,000 tokens a day, a **USD 25 monthly cost limit** (`monthlyCostLimitMicros` 25,000,000), 2 concurrent runs, 24 tool calls per run.
+- `requireDifferentApprover` stays `false`: the team is one person. Turn it on when a second approver exists.
+
+The starter data (`marketing-starter-data.json`) carries these channel policies, verification dates and the cost limit.
