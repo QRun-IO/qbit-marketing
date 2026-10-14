@@ -111,12 +111,11 @@ class MarketingQBitProducerTest extends BaseMarketingTest
 
 
    /*******************************************************************************
-    ** On QQQ 4.1.0-RC.4 the kernel hook is absent; the qbit still produces.
+    ** Whether or not the kernel hook is available (absent on QQQ 4.1.0-RC.4), registering no tools registers nothing.
     *******************************************************************************/
    @Test
-   void testKernelHookAbsentOnRc4()
+   void testKernelHookRegistersNothingWithoutTools()
    {
-      assertThat(KernelToolRegistration.isAvailable()).isFalse();
       assertThat(KernelToolRegistration.register(qInstance, List.of())).isZero();
    }
 
