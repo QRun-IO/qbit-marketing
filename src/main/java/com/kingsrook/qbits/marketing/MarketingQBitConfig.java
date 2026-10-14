@@ -83,6 +83,7 @@ public class MarketingQBitConfig implements QBitConfig
    private String                             aiDisclosureText          = "Prepared with AI assistance.";
 
    private Integer                       staleSourceDays = 90;
+   private Integer                       staleChannelRulesDays = 90;
    private transient MarketingCrmGateway crmGateway;
 
    /** Sources that are Marketing's own and cannot be an importer's name. */
@@ -107,6 +108,7 @@ public class MarketingQBitConfig implements QBitConfig
          "agent limits (maxToolCallsPerRun, maxModelCallsPerRun, maxRunSeconds, maxConcurrentAgentRuns) must be positive", errors);
       assertCondition(positive(defaultMaxAttempts) && positive(workerBatchSize) && positive(leaseSeconds) && positive(maxRecipientsPerExecution),
          "execution limits (defaultMaxAttempts, workerBatchSize, leaseSeconds, maxRecipientsPerExecution) must be positive", errors);
+      assertCondition(positive(staleChannelRulesDays), "staleChannelRulesDays must be positive", errors);
       if(StringUtils.hasContent(providerName))
       {
          assertCondition(modelProviders.containsKey(providerName), "providerName [" + providerName + "] is not one of the registered model providers " + modelProviders.keySet(), errors);
@@ -785,6 +787,28 @@ public class MarketingQBitConfig implements QBitConfig
    public MarketingQBitConfig withAiDisclosureText(String aiDisclosureText)
    {
       this.aiDisclosureText = aiDisclosureText;
+      return (this);
+   }
+
+
+
+   /*******************************************************************************
+    ** Getter for staleChannelRulesDays: how long a channel's rulesVerifiedDate
+    ** stays current before Check Readiness asks for the rules to be re-read.
+    *******************************************************************************/
+   public Integer getStaleChannelRulesDays()
+   {
+      return (this.staleChannelRulesDays);
+   }
+
+
+
+   /*******************************************************************************
+    ** Fluent setter for staleChannelRulesDays
+    *******************************************************************************/
+   public MarketingQBitConfig withStaleChannelRulesDays(Integer staleChannelRulesDays)
+   {
+      this.staleChannelRulesDays = staleChannelRulesDays;
       return (this);
    }
 

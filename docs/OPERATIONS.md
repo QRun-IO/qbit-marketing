@@ -23,6 +23,7 @@
 | `requireDifferentApprover` | `false` | Four-eyes: the author of a revision can't approve it. |
 | `aiDisclosureText` | `Prepared with AI assistance.` | Required in agent-written text for channels that allow AI content *with disclosure*. |
 | `staleSourceDays` | 90 | When evidence counts as stale. |
+| `staleChannelRulesDays` | 90 | When a channel's `rulesVerifiedDate` counts as stale: Check Readiness warns on a campaign whose content uses the channel, and points at the channel's `rulesSourceUrl`. |
 | `crmGateway` | none | `QbitCrmGateway` for qbit-crm, or your own `MarketingCrmGateway`. |
 
 **Fail closed:** without the policy row, or unless a switch is explicitly on, the agent and execution are **off**. **Load Verified Starter Data** creates the row, or you can create it by hand. Configuration Status shows the policy state.

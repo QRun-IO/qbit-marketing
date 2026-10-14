@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Properties;
 import com.kingsrook.qbits.marketing.agent.KernelToolRegistration;
 import com.kingsrook.qbits.marketing.agent.tools.MarketingTools;
+import com.kingsrook.qbits.marketing.metadata.MarketingHelp;
 import com.kingsrook.qbits.marketing.metadata.MarketingMetaDataBuilder;
 import com.kingsrook.qbits.marketing.processes.MarketingActions;
 import com.kingsrook.qbits.marketing.processes.MarketingTableProcesses;
@@ -200,6 +201,7 @@ public class MarketingQBitProducer implements QBitMetaDataProducer<MarketingQBit
       }
 
       qInstance.addApp(builder.buildApp(MarketingWidgets.HOME_WIDGETS));
+      MarketingHelp.apply(qInstance);
 
       ////////////////////////////////////
       // runtime and kernel tools       //

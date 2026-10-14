@@ -152,6 +152,7 @@ public class ReadinessChecker
       MarketingProduct  product  = new MarketingProduct(MarketingStore.require(MarketingProduct.TABLE_NAME, campaign.getProductId()));
       Integer           pid      = campaign.getProductId();
       findings.clear();
+      int channelRulesStaleDays = MarketingRuntime.current().getConfig().getStaleChannelRulesDays();
 
       ProductMaturity maturity = ProductMaturity.getById(product.getMaturity());
       CampaignGoal    goal     = CampaignGoal.getById(campaign.getGoal());
@@ -203,11 +204,24 @@ public class ReadinessChecker
          {
             continue;
          }
+         String rulesUrl = channel.getValueString("rulesSourceUrl");
+         String readIt   = StringUtils.hasContent(rulesUrl) ? "Read " + rulesUrl + " and record" : "Read the channel's current rules and record";
          if(AiContentPolicy.UNKNOWN.getId().equals(channel.getValueInteger("aiContentPolicy")) || channel.getValue("rulesVerifiedDate") == null)
          {
             add(pid, campaignId, contentRecord.getValueInteger("id"), null, FindingType.CHANNEL_RULE, FindingSeverity.WARNING,
                "Channel rules not verified: " + channel.getValueString("name"),
-               "The channel's rules (including on AI-generated content and automation) are not recorded as verified.", "Read the channel's current rules and record them on the channel.");
+               "The channel's rules (including on AI-generated content and automation) are not recorded as verified.", readIt + " them on the channel.");
+         }
+         else if(isStale(channel.getValueLocalDate("rulesVerifiedDate"), channelRulesStaleDays))
+         {
+            ////////////////////////////////////////////////////////////////////////
+            // same idea as a stale evidence source: rules change, so a check     //
+            // older than staleChannelRulesDays has to be repeated                //
+            ////////////////////////////////////////////////////////////////////////
+            add(pid, campaignId, contentRecord.getValueInteger("id"), null, FindingType.CHANNEL_RULE, FindingSeverity.WARNING,
+               "Channel rules may be out of date: " + channel.getValueString("name"),
+               "The channel's rules were last verified " + channel.getValueLocalDate("rulesVerifiedDate") + " (over " + channelRulesStaleDays + " days ago).",
+               readIt + " the date, and change the channel's AI-content and automation settings if its rules changed.");
          }
       }
 
