@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
-import com.kingsrook.qbits.assistant.provider.AssistantModelProvider;
+import com.kingsrook.qbits.assistant.spi.AssistantModelProvider;
 import com.kingsrook.qbits.marketing.crm.MarketingCrmGateway;
 import com.kingsrook.qbits.marketing.email.QbitEmailTransport;
 import com.kingsrook.qbits.marketing.model.MarketingPolicy;

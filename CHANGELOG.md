@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The format follows Keep
 ## [0.1.0] - Unreleased
 
 ### Changed
+- Move to the assistant provider SPI `0.1.0-RC.12` (package `com.kingsrook.qbits.assistant.spi`) and `qbit-build-parent` `2.1.2`, and drop the per-repository guardrail allow-lists. `qbit-assistant-provider-openai` becomes a test dependency; hosts that register it add it themselves.
 - Switch the optional qbit-email integration to the published `com.kingsrook.qbits.email.api` package in `0.1.0-RC.3` (fixes #13). Preserve MARKETING messages, idempotency keys, execution links and outcome mapping; use typed readiness failures so missing providers or brand postal addresses remain send-time rejections. Upgrade `qbit-build-parent` to `2.1.1` and remove all per-repository guardrail allow-lists.
 - Resolve architecture finding F5 (#9): depend on `qbit-assistant-provider-api` and `qbit-assistant-provider-openai` `0.1.0-RC.11`, with no full assistant dependency, including in tests.
 - Replace the local OpenAI-compatible implementation with the published provider and document `ProviderSettings`, environment-key resolution and provider-name migration. Agent tests use a local scripted double.
@@ -51,5 +52,6 @@ All notable changes to this project are documented here. The format follows Keep
 - **Docs:** README, DESIGN, OPERATIONS and STARTER-DATA.
 
 ### Changed
+- Move to the assistant provider SPI `0.1.0-RC.12` (package `com.kingsrook.qbits.assistant.spi`) and `qbit-build-parent` `2.1.2`, and drop the per-repository guardrail allow-lists. `qbit-assistant-provider-openai` becomes a test dependency; hosts that register it add it themselves.
 - **Email:** new `QbitEmailTransport` sends campaign email through qbit-email (one MARKETING message per recipient, unsubscribe and suppression enforced there, idempotent, linked to the execution). It is selected automatically for the `qqq_email` channel when qbit-email is produced and the host registered no such transport; `QqqMessagingEmailTransport` remains the fallback. qbit-email is an optional dependency; QQQ moves to `4.1.0-RC.5`.
 

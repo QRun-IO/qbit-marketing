@@ -21,7 +21,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import com.kingsrook.qbits.assistant.provider.ModelUsage;
+import com.kingsrook.qbits.assistant.spi.ModelUsage;
 import com.kingsrook.qbits.marketing.agent.MarketingAgentService;
 import com.kingsrook.qbits.marketing.agent.tools.MarketingTools;
 import com.kingsrook.qbits.marketing.measurement.MeasurementReport;
