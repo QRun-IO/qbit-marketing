@@ -774,6 +774,10 @@ entries:
     summary: "When the run began."
     content: |
       Recorded automatically.
+  - key: table:marketing_agent_run;field:heartbeatAt
+    summary: "When the running agent last checked in."
+    content: |
+      Updated when the run starts and before each model call. A Running run that has not checked in for longer than its time limit plus a minute is marked Failed, because its server stopped, and no longer counts against the concurrent-run limit.
   - key: table:marketing_agent_run;field:toolCalls
     summary: "How many tool calls the agent made."
     content: |
