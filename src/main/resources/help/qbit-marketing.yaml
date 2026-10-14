@@ -1390,3 +1390,63 @@ entries:
     summary: "Offers policies to choose from."
     content: |
       Used by fields that point to a {{label:marketing_policy}} record.
+  - key: table:marketing_metric_daily;slot:help
+    summary: "Daily result totals for a campaign, kept up to date from its outcome events."
+    content: |
+      One row per campaign, UTC day, funnel stage, event type and test-data flag. Marketing rewrites these rows whenever an outcome event is added, changed or deleted, so they are read-only. The campaign Results come from these totals. Rebuild Results recomputes them from the events.
+  - key: table:marketing_metric_daily;field:campaignId
+    summary: "The campaign these totals belong to."
+    content: |
+      Set by Marketing from the outcome events.
+  - key: table:marketing_metric_daily;field:productId
+    summary: "The campaign's product, used for product-level access."
+    content: |
+      Copied from the campaign so the product record lock applies to these rows.
+  - key: table:marketing_metric_daily;field:dayUtc
+    summary: "The day the events happened, in UTC."
+    content: |
+      Events are grouped by the UTC date of their Occurred At time.
+  - key: table:marketing_metric_daily;field:funnelStage
+    summary: "The funnel stage of the events counted in this row."
+    content: |
+      One of: {{values:marketing_funnel_stage}}. Stages are reported separately and never added together.
+  - key: table:marketing_metric_daily;field:eventType
+    summary: "The event type counted in this row."
+    content: |
+      The same event type as on the outcome events, for example provider_accepted.
+  - key: table:marketing_metric_daily;field:isTestData
+    summary: "Whether this row counts test events, which the Results leave out."
+    content: |
+      Test events are kept in their own rows so they never mix with real results.
+  - key: table:marketing_metric_daily;field:rawCount
+    summary: "The sum of the events' quantities that day."
+    content: |
+      Raw events, not people. One person can be counted many times.
+  - key: table:marketing_metric_daily;field:uniqueActors
+    summary: "How many different actors had events that day."
+    content: |
+      Counted by actor key for this day only. Daily numbers cannot be added up into a campaign total, so the Results count unique actors across the whole campaign separately.
+  - key: table:marketing_metric_daily;field:eventsWithoutActor
+    summary: "Events that day with no actor key, so they are not in the unique count."
+    content: |
+      The Results note these, because unique actors are a lower bound when some events have no actor.
+  - key: table:marketing_metric_daily;field:recomputedAt
+    summary: "When Marketing last recalculated this row."
+    content: |
+      Updated only when the numbers change.
+  - key: widget:marketing_campaign_join_marketing_metric_daily;slot:label
+    summary: "Daily totals of this campaign's outcome events."
+    content: |
+      Read-only. Use Rebuild Results if they ever look out of step with the events.
+  - key: possibleValueSource:marketing_metric_daily;slot:help
+    summary: "Offers daily result rows to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_metric_daily}} record.
+  - key: process:marketing_rebuild_results;slot:help
+    summary: "Recomputes the daily result totals of the selected campaigns from their outcome events."
+    content: |
+      Safe to run any time: it rewrites only rows whose numbers differ and deletes days with no events left. Needs the same permission as Update Results from CRM.
+  - key: process:marketing_import_outcomes;slot:help
+    summary: "Fetches new outcome events for the selected campaigns from every registered importer."
+    content: |
+      Each importer adds events with its own name as the source, and a repeat of the same external id is skipped. An importer that fails is named in the result and does not stop the others. With no importers registered, nothing is imported.
