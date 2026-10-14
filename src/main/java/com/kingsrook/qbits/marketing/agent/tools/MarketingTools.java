@@ -248,6 +248,7 @@ public final class MarketingTools
          c.put("lead_qualification", Boolean.TRUE.equals(campaign.getLeadQualificationEnabled())
             ? "on: at least " + campaign.getQualifyMinFormSubmissions() + " attributed form submission(s)" + (Boolean.TRUE.equals(campaign.getQualifyRequireEmailConsent()) ? " and email consent" : "")
             : "off (no leads are qualified)");
+         c.put("lead_qualification_note", campaign.getLeadQualificationNote());
 
          if(campaign.getAudienceId() != null)
          {
