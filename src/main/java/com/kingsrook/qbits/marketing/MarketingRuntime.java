@@ -18,18 +18,16 @@ package com.kingsrook.qbits.marketing;
 
 
 import java.net.InetAddress;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
-import com.kingsrook.qbits.assistant.provider.AssistantModelProvider;
+import com.kingsrook.qbits.assistant.spi.AssistantModelProvider;
 import com.kingsrook.qbits.marketing.crm.MarketingCrmGateway;
 import com.kingsrook.qbits.marketing.email.QbitEmailTransport;
+import com.kingsrook.qbits.marketing.measurement.MarketingOutcomeImporter;
 import com.kingsrook.qbits.marketing.model.MarketingPolicy;
 import com.kingsrook.qbits.marketing.transport.ControlledTestTransport;
 import com.kingsrook.qbits.marketing.transport.MarketingTransport;
@@ -50,14 +48,15 @@ import com.kingsrook.qqq.backend.core.utils.StringUtils;
 
 /*******************************************************************************
  ** The live parts of the Marketing QBit for one instance: the transports, the
- ** model providers, the CRM gateway, and the in-process limits (agent
- ** concurrency, model-call rate, the single execution worker).
+ ** model providers, the CRM gateway, and the single execution worker's
+ ** in-process lock. (Agent concurrency and the model-call rate are counted in
+ ** the database by MarketingAgentService.)
  **
  ** Registered as supplemental instance meta-data (not published to
  ** frontends), so process steps and widgets find it from QContext.
  **
- ** Scale note: the limits here are per JVM. One replica is the supported shape
- ** today; see docs/OPERATIONS.md ("Scale and limits").
+ ** Scale note: the execution worker is per JVM. One worker replica is the
+ ** supported shape today; see docs/OPERATIONS.md ("Scale and limits").
  *******************************************************************************/
 public class MarketingRuntime implements QSupplementalInstanceMetaData
 {
@@ -69,9 +68,7 @@ public class MarketingRuntime implements QSupplementalInstanceMetaData
 
    private final MarketingQBitConfig             config;
    private final Map<String, MarketingTransport> transports = new LinkedHashMap<>();
-   private final Semaphore                       agentPermits;
    private final ReentrantLock                   workerLock = new ReentrantLock();
-   private final Deque<Long>                     modelCallTimes = new ArrayDeque<>();
    private final String                          workerName;
    private volatile MarketingTransport             qbitEmailTransport;
 
@@ -91,7 +88,6 @@ public class MarketingRuntime implements QSupplementalInstanceMetaData
       {
          transports.put(transport.getName(), transport);
       }
-      this.agentPermits = new Semaphore(config.getMaxConcurrentAgentRuns());
       this.workerName = hostName() + ":" + UUID.randomUUID().toString().substring(0, 8);
    }
 
@@ -168,7 +164,7 @@ public class MarketingRuntime implements QSupplementalInstanceMetaData
    {
       try
       {
-         Class.forName("com.kingsrook.qbits.email.outbox.EmailService");
+         Class.forName("com.kingsrook.qbits.email.api.EmailApi");
          return (true);
       }
       catch(ClassNotFoundException | LinkageError e)
@@ -323,48 +319,18 @@ public class MarketingRuntime implements QSupplementalInstanceMetaData
          list.add(new IntegrationStatus("CRM", gateway.getName(), gateway.isAvailable() ? "Available" : "Not available",
             gateway.isAvailable() ? "Uses the CRM's own contact, consent, list and activity tables." : "The CRM's tables are not in this application."));
       }
+
+      if(config.getOutcomeImporters().isEmpty())
+      {
+         list.add(new IntegrationStatus("Outcome importer", "(none)", "Not configured",
+            "No importer: outcomes are recorded by hand, through the API or by the CRM import, so other metrics stay Not measured."));
+      }
+      for(MarketingOutcomeImporter importer : config.getOutcomeImporters())
+      {
+         list.add(new IntegrationStatus("Outcome importer", importer.getName(), "Registered (not verified by a live call)",
+            "Runs from Import Outcomes on a campaign; events are deduplicated by source and external id."));
+      }
       return (list);
-   }
-
-
-
-   /*******************************************************************************
-    ** Try to start an agent run (bounded concurrency). Release with
-    ** releaseAgentPermit.
-    *******************************************************************************/
-   public boolean tryAcquireAgentPermit()
-   {
-      return (agentPermits.tryAcquire());
-   }
-
-
-
-   /*******************************************************************************
-    **
-    *******************************************************************************/
-   public void releaseAgentPermit()
-   {
-      agentPermits.release();
-   }
-
-
-
-   /*******************************************************************************
-    ** Reserve a model call within the per-minute rate (false = over the limit).
-    *******************************************************************************/
-   public synchronized boolean tryReserveModelCall()
-   {
-      long now = System.currentTimeMillis();
-      while(!modelCallTimes.isEmpty() && modelCallTimes.peekFirst() < now - 60_000)
-      {
-         modelCallTimes.pollFirst();
-      }
-      if(modelCallTimes.size() >= config.getMaxModelCallsPerMinute())
-      {
-         return (false);
-      }
-      modelCallTimes.addLast(now);
-      return (true);
    }
 
 

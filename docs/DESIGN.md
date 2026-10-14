@@ -18,7 +18,7 @@ The work is truthful and auditable: facts come from sources with dates, people a
 
 | From | Reused for |
 |---|---|
-| **qbit-assistant** (0.1.0-RC.2) | The model-provider SPI: `AssistantModelProvider`, `ModelRequest` / `ModelResponse` / `ModelPart`, `StreamHandle`, `ModelProviderException` with its retryable kinds, and `ModelUsage`. Also the Claude provider (`qbit-assistant-provider-anthropic`), `ScriptedModelProvider` for tests and demos, and `ModelPricing` for cost. Marketing adds an OpenAI-compatible provider that implements the same SPI. There is no second provider abstraction. |
+| **qbit-assistant** (0.1.0-RC.2) | The model-provider SPI: `AssistantModelProvider`, `ModelRequest` / `ModelResponse` / `ModelPart`, `StreamHandle`, `ModelProviderException` with its retryable kinds, and `ModelUsage`. Since RC.12 it lives in `com.kingsrook.qbits.assistant.spi` (`qbit-assistant-provider-api`), together with `ModelPricing` for cost; hosts register a provider such as `qbit-assistant-provider-anthropic` or `qbit-assistant-provider-openai`. There is no second provider abstraction. |
 | **QQQ AI tool kernel** (qqq#1078, core) | The tool contract: `AbstractAiTool` / `AiToolKind` (READ, WRITE_PROPOSAL), `AiToolOutcome`, the `qqq_data` untrusted-data envelope (`AiDataEnvelope`), secret redaction (`AiRedactor`), strict input keys, and running as the user's session. The RC.6 baseline includes `AiToolRegistry` (QRun-IO/qqq#1096); Marketing contributes its read tools there and runs its own agent tools with the same contract. |
 | **QQQ core permission enforcement** (qqq#1061) | Agent tools read with `PermissionEnforcement.ENFORCE`. Service entry points check their step's permission, then run as trusted internal work in an authorized scope, as QQQ does for calls nested in a core action. Record security locks always apply. |
 | **qbit-assistant / sql-workbench metadata builders** | Explicit builder-produced tables (not annotation scanning), snake_case `marketing_*` names, QQQ standard permission suffixes, `DenyBehavior.HIDDEN`, read-only system tables, record locks, reference DDL in `docs/ddl`, `tableMetaDataCustomizer` and `inferBackendNames`. |
@@ -27,7 +27,7 @@ The work is truthful and auditable: facts come from sources with dates, people a
 | **QQQ messaging** | `SendMessageAction` and the host's `QMessagingProviderMetaData` for email. |
 | **QQQ ESB / Quick Search** | Every write goes through core table actions, so record-change listeners (ESB publications) and Quick Search indexing apply. Hosts list `MAIN_TABLE_NAMES` in their ESB and Quick Search config (Voyage does this for Quick Search). |
 
-## Data model (18 tables)
+## Data model (19 tables)
 
 **Main tables** (in the nav):
 
@@ -61,6 +61,7 @@ The work is truthful and auditable: facts come from sources with dates, people a
 | `marketing_finding` | product, campaign, content, agent run | |
 | `marketing_metric` | campaign | The measurement plan. |
 | `marketing_outcome_event` | campaign | Raw events, deduplicated by (source, external id). |
+| `marketing_metric_daily` | campaign | **Daily Results**: the persisted rollup of the events per UTC day, stage, event type and test-data flag. System-written and read-only. |
 
 Most rows carry a denormalized `productId`, so the optional product security lock covers every table. `scripts/generate-model.py` generates the entities, the 21 enum possible-value sources and the DDL from one spec.
 
@@ -75,7 +76,7 @@ Most rows carry a denormalized `productId`, so the optional product security loc
   - *With disclosure* requires the disclosure text in the body.
   - Optionally, the approver must not be the revision's author.
   - The approval row stores the hash, revision, destination, scope and schedule.
-- **Guarded tables:** approvals, executions, attempts, revisions, test deliveries, agent runs and steps are read-only in the UI and API. A guard customizer rejects any write outside Marketing's services, including the generic API and any tool.
+- **Guarded tables:** approvals, executions, attempts, revisions, test deliveries, agent runs and steps, and the daily results are read-only in the UI and API. A guard customizer rejects any write outside Marketing's services, including the generic API and any tool.
 
 ## Execution
 
@@ -113,6 +114,13 @@ Most rows carry a denormalized `productId`, so the optional product security loc
 - **Test data:** test executions and fixtures are flagged `isTestData` and excluded from the numbers, with a count.
 - **Fixed limitations:** provider acceptance is not delivery; visits, stars and downloads are not adoption.
 - **Deduplication:** outcome events are deduplicated by the unique key (source, external id) on every insert path: the admin UI, the API and services.
+- **Daily rollup:** the report does not load the campaign's events. `marketing_metric_daily` holds, per campaign, UTC day (`dayUtc`), stage, event type and test-data flag: the raw count (sum of quantities), the unique actors of that day and the events without an actor. The unique key is (campaign, day, stage, event type, test data).
+  - **Kept in step:** `OutcomeEventRollupCustomizer` recomputes the affected (campaign, day)s after every insert, update and delete of an event, from any path (table, API, CRM import, importer, the execution worker). An update recomputes the old and the new day. `MeasurementRollupService` re-reads that day's raw events and upserts by the unique key, rewriting a row only when its numbers differ, and deletes rows that no longer have events. It is idempotent.
+  - **Rebuild Results** (campaign record action, `marketing.prepare`, the same permission as Update Results from CRM) rebuilds every day of the selected campaigns, so a damaged rollup, or events written outside Marketing, can be repaired.
+  - **Unique actors are not summed from days** (the same actor on two days is one actor). The report counts them over the whole campaign with a backend `COUNT_DISTINCT` of `actorKey` grouped by stage and event type; raw counts are backend `SUM`s over the rollup. Nothing is aggregated in memory.
+  - **Events always have a time and a test flag:** an insert defaults `occurredAt` to now and `isTestData` to false; a blank `actorKey` is stored as null; an event cannot lose its time.
+  - **Written only by Marketing:** the table is in `SYSTEM_WRITTEN_TABLE_NAMES` (guarded, no insert, edit or delete in the UI or API), carries `productId` for the product record lock and shows as the **Daily Results** child list on the campaign.
+- **Importers:** `MarketingOutcomeImporter` (`getName()`, `fetch(campaign, since)`) is the SPI for an analytics source, registered with `MarketingQBitConfig.withOutcomeImporter(...)`. **Import Outcomes** (campaign record action) runs every importer and stores each `ImportedOutcome` through the normal insert path with the importer's name as `source`, so repeats are dropped; `since` is the newest `occurredAt` already recorded for that importer and campaign. A failing importer is named in the result and does not stop the others. The qbit ships no concrete network importer. The Configuration Status widget lists the registered importers.
 
 ## CRM integration
 
@@ -122,7 +130,7 @@ Most rows carry a denormalized `productId`, so the optional product security loc
 - `listFormSubmissions(utmCampaign)`: ids and times only
 - `recordActivity`
 
-`QbitCrmGateway` implements it over qbit-crm 0.1.0 by table name, through the standard actions, so there is no compile dependency on the CRM:
+`QbitCrmGateway` implements it over qbit-crm 0.2.0's `crm_*` tables (`crm_contact`, `crm_consent_record`, ...) by table name, through the standard actions, so there is no compile dependency on the CRM. It moves to qbit-crm's public `com.kingsrook.qbits.crm.api.CrmMarketingApi` once that is released:
 - **Email consent:** the most recent Email consent record decides (Granted and not expired). No record means no consent.
 - **Suppression:** `doNotEmail`, an unsubscribe date, or a list membership that isn't Subscribed.
 
@@ -199,7 +207,7 @@ The owner accepted every recommendation on 2026-10-12. The concrete defaults, re
 | OpenAI-compatible provider | Not configured | Optional; register it only for a specific need (for example a local Ollama for experiments). With two providers the host must name one. |
 | Email transport | QQQ messaging over Amazon SES, from a verified `qrun.io` domain (SPF, DKIM, DMARC), from-address `news@qrun.io`, replies to `hello@qrun.io` | SES is a low-cost, reliable sender and QQQ messaging supports it directly. Reports *Configured, not verified* until one end-to-end test send, then the host sets `withVerifiedOperational(true)`. |
 | Social and community posting | No transports. Posted by hand | No connector exists, and each community's rules must be checked before any automation. |
-| Measurement | Outcome events from the CRM import and by hand; no third-party analytics provider | Matches the honest-measurement rules: not instrumented shows *Not measured*. |
+| Measurement | Outcome events from the CRM import, by hand and from host-registered importers (SPI only); a persisted daily rollup; no third-party analytics provider | Matches the honest-measurement rules: not instrumented shows *Not measured*. |
 | CRM gateway | `QbitCrmGateway` (qbit-crm) | What Voyage's Marketing wiring uses. |
 
 **AI-content channel policy**

@@ -26,6 +26,8 @@ import com.kingsrook.qbits.marketing.agent.MarketingAgentService;
 import com.kingsrook.qbits.marketing.approval.ApprovalService;
 import com.kingsrook.qbits.marketing.execution.ExecutionService;
 import com.kingsrook.qbits.marketing.measurement.CrmResultsService;
+import com.kingsrook.qbits.marketing.measurement.MeasurementRollupService;
+import com.kingsrook.qbits.marketing.measurement.OutcomeImportService;
 import com.kingsrook.qbits.marketing.model.MarketingAgentRun;
 import com.kingsrook.qbits.marketing.model.MarketingCampaign;
 import com.kingsrook.qbits.marketing.model.MarketingContent;
@@ -57,6 +59,8 @@ public final class MarketingActions
    public static final String AGENT_REVIEW             = "marketing_agent_review";
    public static final String AGENT_ANALYZE            = "marketing_agent_analyze";
    public static final String UPDATE_RESULTS_FROM_CRM  = "marketing_update_results_from_crm";
+   public static final String REBUILD_RESULTS          = "marketing_rebuild_results";
+   public static final String IMPORT_OUTCOMES          = "marketing_import_outcomes";
    public static final String SUBMIT_FOR_REVIEW        = "marketing_submit_for_review";
    public static final String APPROVE                  = "marketing_approve";
    public static final String RETURN_TO_DRAFT          = "marketing_return_to_draft";
@@ -173,6 +177,12 @@ public final class MarketingActions
          "campaign(s) will import CRM form submissions and apply their lead rule",
          r -> r.getValueString("utmCampaign") == null || r.getValueString("utmCampaign").isBlank() ? "no UTM campaign set" : null,
          r -> new CrmResultsService().updateFromCrm(r.getValueInteger("id"))));
+      actions.add(new SimpleAction(REBUILD_RESULTS, "Rebuild Results", MarketingCampaign.TABLE_NAME, "calendar_view_day", MarketingPermissions.PREPARE_BASE,
+         "campaign(s) will have their daily results rebuilt from the raw outcome events", r -> null,
+         r -> new MeasurementRollupService().rebuild(r.getValueInteger("id"))));
+      actions.add(new SimpleAction(IMPORT_OUTCOMES, "Import Outcomes", MarketingCampaign.TABLE_NAME, "cloud_download", MarketingPermissions.PREPARE_BASE,
+         "campaign(s) will import outcome events from the registered importers (repeats are dropped)", r -> new OutcomeImportService().blocker(),
+         r -> new OutcomeImportService().importOutcomes(r.getValueInteger("id"))));
 
       //////////////
       // content  //

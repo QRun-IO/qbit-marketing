@@ -5,14 +5,21 @@ All notable changes to this project are documented here. The format follows Keep
 ## [0.1.0] - Unreleased
 
 ### Changed
+- `QbitCrmGateway` uses qbit-crm 0.2.0's `crm_*` snake_case table names (`crm_contact`, ...). qbit-crm 0.1.0's camelCase tables are no longer supported.
+- Make the agent limits distributed (#4): `maxConcurrentAgentRuns` counts Running `marketing_agent_run` rows in the database (a new `heartbeatAt` column, updated on each model call, lets runs whose server stopped be marked Failed first), and `maxModelCallsPerMinute` counts model-call steps in the last 60 seconds and makes a run wait rather than fail. The in-memory semaphore and rate window are gone; the settings and Marketing Policy override keep their names and defaults (the policy `maxConcurrentAgentRuns` override now applies). Hosts add `heartbeat_at` to `marketing_agent_run`. The count-then-insert window is still racy; a conditional-update claim (qqq#1178) is a follow-up.
+- Move to the assistant provider SPI `0.1.0-RC.12` (package `com.kingsrook.qbits.assistant.spi`) and `qbit-build-parent` `2.1.2`, and drop the per-repository guardrail allow-lists. `qbit-assistant-provider-openai` becomes a test dependency; hosts that register it add it themselves.
+- Switch the optional qbit-email integration to the published `com.kingsrook.qbits.email.api` package in `0.1.0-RC.3` (fixes #13). Preserve MARKETING messages, idempotency keys, execution links and outcome mapping; use typed readiness failures so missing providers or brand postal addresses remain send-time rejections. Upgrade `qbit-build-parent` to `2.1.1` and remove all per-repository guardrail allow-lists.
 - Resolve architecture finding F5 (#9): depend on `qbit-assistant-provider-api` and `qbit-assistant-provider-openai` `0.1.0-RC.11`, with no full assistant dependency, including in tests.
 - Replace the local OpenAI-compatible implementation with the published provider and document `ProviderSettings`, environment-key resolution and provider-name migration. Agent tests use a local scripted double.
-- Upgrade QQQ to `4.1.0-RC.6` and `qbit-build-parent` to `2.1.0`; enable architecture enforcement and strict UI API routes with explicit provider API/artifact allowances.
+- Upgrade QQQ to `4.1.0-RC.6`; enable architecture enforcement and strict UI API routes.
 
 ### Added
+- **Persisted measurement** (issue #4, item 4): the `marketing_metric_daily` sub-table (**Daily Results** on a campaign; system-written, read-only, product-locked) rolls outcome events up per UTC day, stage, event type and test-data flag. `MeasurementRollupService` recomputes the affected campaign-days idempotently after every event insert, update and delete; **Rebuild Results** (campaign record action) rebuilds every day. `MeasurementReport` sums raw counts from the rollup and counts campaign-wide unique actors with a backend `COUNT_DISTINCT`; its output is unchanged. An event insert now defaults `occurredAt` to now and `isTestData` to false, and a blank `actorKey` is stored as null.
+- **Outcome importer SPI:** `MarketingOutcomeImporter`, registered with `MarketingQBitConfig.withOutcomeImporter(...)`, and the **Import Outcomes** campaign action, which stores outcomes through the normal (source, external id) dedupe. The Configuration Status widget lists the importers. No concrete network importer.
+- Help bundle `help/qbit-marketing.yaml` (346 entries) covering the app, tables, fields, actions, widgets and possible-value sources, with `HelpBundleCoverageTest` as the coverage gate until `HelpBundleAssertions` ships in core (qqq#1198). The producer registers it once that API exists.
 - Product-contingent possible values for editable campaign, claim, finding, metric and outcome-event references.
 - Repository scaffold: build, CI and the repository standard files.
-- **Model:** 18 standard `marketing_*` tables, 21 enum possible-value sources, joins and child lists. The PostgreSQL reference DDL (`docs/ddl/postgres.sql`) and an H2 twin are generated from one spec (`scripts/generate-model.py`).
+- **Model:** 19 standard `marketing_*` tables, 21 enum possible-value sources, joins and child lists. The PostgreSQL reference DDL (`docs/ddl/postgres.sql`) and an H2 twin are generated from one spec (`scripts/generate-model.py`).
 - **Products and evidence:**
   - Briefs, audiences, evidence sources with verification dates, and claims (Released / Planned / Unverified / Disputed).
   - Deterministic **Check Readiness** for products and campaigns.
@@ -50,5 +57,6 @@ All notable changes to this project are documented here. The format follows Keep
 - **Docs:** README, DESIGN, OPERATIONS and STARTER-DATA.
 
 ### Changed
+- Move to the assistant provider SPI `0.1.0-RC.12` (package `com.kingsrook.qbits.assistant.spi`) and `qbit-build-parent` `2.1.2`, and drop the per-repository guardrail allow-lists. `qbit-assistant-provider-openai` becomes a test dependency; hosts that register it add it themselves.
 - **Email:** new `QbitEmailTransport` sends campaign email through qbit-email (one MARKETING message per recipient, unsubscribe and suppression enforced there, idempotent, linked to the execution). It is selected automatically for the `qqq_email` channel when qbit-email is produced and the host registered no such transport; `QqqMessagingEmailTransport` remains the fallback. qbit-email is an optional dependency; QQQ moves to `4.1.0-RC.5`.
 

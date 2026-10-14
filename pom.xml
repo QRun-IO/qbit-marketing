@@ -22,23 +22,18 @@
       <maven.compiler.source>21</maven.compiler.source>
       <maven.compiler.target>21</maven.compiler.target>
       <jacoco.version>0.8.15</jacoco.version>
-      <!-- Share the provider SPI and pricing without installing the assistant runtime. -->
-      <qbit-assistant.version>0.1.0-RC.11</qbit-assistant.version>
+      <!-- The provider SPI (com.kingsrook.qbits.assistant.spi) only: no assistant runtime. -->
+      <qbit-assistant.version>0.1.0-RC.12</qbit-assistant.version>
       <qbit.guardrails.enforce>true</qbit.guardrails.enforce>
       <qbit.guardrails.strictUiApiRoutes>true</qbit.guardrails.strictUiApiRoutes>
-      <!-- 2.1.0 matches package prefixes, not class names; provider-api owns ModelPricing. -->
-      <!-- TEMPORARY: qbit-email internals until it publishes an API (QRun-IO/qbit-marketing#13). -->
-      <qbit.guardrails.allowedApiPackages>com.kingsrook.qbits.objectstorage.api,com.kingsrook.qbits.assistant.provider,com.kingsrook.qbits.assistant.engine,com.kingsrook.qbits.email</qbit.guardrails.allowedApiPackages>
-      <qbit.guardrails.allowedQbitArtifacts>com.kingsrook.qbits:qbit-object-storage,com.kingsrook.qbits:*-api,com.kingsrook.qbits:qbit-assistant-provider-openai,com.kingsrook.qbits:qbit-email</qbit.guardrails.allowedQbitArtifacts>
-      <!-- qbit-email from Maven Central -->
-      <qbit-email.version>0.1.0-RC.1</qbit-email.version>
+      <qbit-email.version>0.1.0-RC.3</qbit-email.version>
       <h2.version>2.3.232</h2.version>
    </properties>
 
    <parent>
       <groupId>com.kingsrook</groupId>
       <artifactId>qbit-build-parent</artifactId>
-      <version>2.1.0</version>
+      <version>2.1.2</version>
    </parent>
 
    <groupId>com.kingsrook.qbits</groupId>
@@ -92,6 +87,8 @@
          <groupId>com.kingsrook.qbits</groupId>
          <artifactId>qbit-assistant-provider-openai</artifactId>
          <version>${qbit-assistant.version}</version>
+         <!-- tests only: hosts add the provider they register (README, Install) -->
+         <scope>test</scope>
       </dependency>
 
       <!-- optional: email through qbit-email when it is produced in the host instance (QbitEmailTransport) -->

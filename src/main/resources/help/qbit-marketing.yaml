@@ -1,0 +1,1452 @@
+bundle: qbit-marketing
+version: 0.1.0
+layer: QBIT
+entries:
+  - key: app:marketing;slot:help
+    summary: "Plan, approve, send and measure marketing for your products, with a person approving everything that goes out."
+    content: |
+      Marketing keeps product facts with their sources, plans campaigns, prepares content, and sends only what a person approved, exactly as approved. It measures results honestly, and its agent drafts and checks work but can never publish. The dashboard shows what needs attention, open campaigns, recent agent runs and the status of each integration.
+  - key: table:marketing_product;slot:help
+    summary: "A product you market, with its facts, links and how ready it is for marketing."
+    content: |
+      The product brief: maturity, tagline, summary, value propositions, license, platforms, latest release, adoption path, official links and the date its facts were last verified. Evidence sources, claims, audiences and campaigns are listed on the product. Check Readiness reviews its evidence, claims, sources and audiences.
+  - key: table:marketing_campaign;slot:help
+    summary: "A planned push for one product, with its goal, audience, message and how success is measured."
+    content: |
+      Holds the goal, status, audience, objective, messaging, call to action, destination, UTM campaign, schedule, owner, success criteria and lead rule. Content, the measurement plan, findings, agent runs and outcome events are listed on the campaign. The agent actions and Update Results from CRM run from here.
+  - key: table:marketing_content;slot:help
+    summary: "A proposed publication: the exact text, destination, recipients, schedule and channel that a person approves."
+    content: |
+      Its status is one of: {{values:marketing_content_status}}. Status changes only through actions such as Submit for Review, Approve and Schedule. Every change to an approved field adds a revision, and an edit after approval voids the approval and returns the content to Draft. The Proposed Publication section shows exactly what a reviewer approves.
+  - key: table:marketing_execution;slot:help
+    summary: "One approved item scheduled to be sent, with its status, attempts and result."
+    content: |
+      Schedule creates one execution per approval. It is written only by Marketing's services and is read-only. Act on it with Run Now, Pause, Resume, Cancel, Reconcile with Provider, Mark as Accepted or Mark Not Sent and Retry. Read its Status Detail when it is Blocked or needs reconciliation.
+  - key: table:marketing_agent_run;slot:help
+    summary: "One run of the marketing agent: what it was asked, what it did and what it cost."
+    content: |
+      Runs start from the agent actions on a campaign and are read-only. Each run lists every step, including what the model saw, and the drafts and findings it created. The agent only prepares work. It never approves, schedules or sends anything.
+  - key: table:marketing_channel;slot:help
+    summary: "A place content can go, with its transport, AI-content rule, automation setting and limits."
+    content: |
+      A channel records its type, transport, whether it is active and allowed to automate, whether AI-written text is allowed, its own rules with the date they were checked, and its sending limits. It is a settings table: it needs marketing.admin.read to view and marketing.admin.write to change.
+  - key: table:marketing_policy;slot:help
+    summary: "The single default row of switches and limits that govern the agent and sending."
+    content: |
+      Holds the kill switches for the agent and for execution, provider and model overrides, the daily token and monthly cost budgets, and the concurrency and tool limits. If the row is missing, or a switch is not explicitly on, the agent and execution are off. It needs marketing.admin.read to view and marketing.admin.write to change.
+  - key: table:marketing_audience;slot:help
+    summary: "A group of people a product is for, with the problem it solves for them."
+    content: |
+      Describes who the product helps: their problem, the task they want to get done, and the evidence for it. A campaign can target one audience. Check Readiness flags a product that has none.
+  - key: table:marketing_evidence_source;slot:help
+    summary: "A source, such as a web page or repository, that product claims are checked against."
+    content: |
+      Records the source type, publisher, URL, an excerpt, who verified it and when. Check Readiness flags a source older than the stale-source limit (90 days unless the host changes it). Claims cite a source.
+  - key: table:marketing_claim;slot:help
+    summary: "A factual statement about a product, with its source, status and evidence."
+    content: |
+      Its status ({{values:marketing_claim_status}}) says whether it can be stated as fact. Check Readiness flags claims that are unverified, unsourced or disputed, and an agent draft that cites a claim that is not Released raises a Blocker finding.
+  - key: table:marketing_content_revision;slot:help
+    summary: "An unchangeable snapshot of a content item as it stood at one revision."
+    content: |
+      A revision is added on every insert and on every change to the approved fields: title, body, destination, call to action, recipient scope, schedule and channel. Revisions are never edited, so the history shows exactly what was proposed and who or what wrote it.
+  - key: table:marketing_approval;slot:help
+    summary: "A person's approval of one exact revision of content, bound to its content hash."
+    content: |
+      It stores the hash, revision, destination, recipient scope and schedule that were approved. Its status is one of: {{values:marketing_approval_status}}. A change to the content that alters the hash invalidates the active approval and records why. It is read-only.
+  - key: table:marketing_execution_attempt;slot:help
+    summary: "One try at sending an execution, with its outcome and the provider's receipt."
+    content: |
+      Each attempt records its outcome, the worker, timing, recipient count and the provider's receipt. A failure that certainly sent nothing is retried with growing delays until the execution runs out of attempts. It is read-only.
+  - key: table:marketing_test_delivery;slot:help
+    summary: "What the test transport accepted for an execution, stored here instead of being sent."
+    content: |
+      The controlled test transport stores each payload per recipient and sends nothing outside the application. A repeated idempotency key is counted as a duplicate rather than stored again. Executions that use it are flagged as test data and left out of results. It is read-only.
+  - key: table:marketing_agent_step;slot:help
+    summary: "One step of an agent run: a model call, a tool call or a deterministic check."
+    content: |
+      A step is one of: {{values:marketing_agent_step_kind}}. Tool steps keep the input and the result exactly as the model saw it, with secrets redacted. It is read-only.
+  - key: table:marketing_finding;slot:help
+    summary: "A problem, gap or recommendation about a product, campaign or content, with a severity."
+    content: |
+      Findings come from Check Readiness, the agent or a person. An open Blocker finding on a content item stops it being approved. Mark Resolved and Dismiss close an open finding, and closing or downgrading a Blocker needs approval authority.
+  - key: table:marketing_metric;slot:help
+    summary: "A measurement planned for a campaign: its stage, event type and how it is counted."
+    content: |
+      The measurement plan. Each metric names a funnel stage and an event type, counts raw events or unique actors, and says how fully it is instrumented. A metric that is not instrumented shows Not measured, never 0, and a partly instrumented one is a lower bound.
+  - key: table:marketing_outcome_event;slot:help
+    summary: "One recorded result event for a campaign, unique by its source and external id."
+    content: |
+      Events come from importers, the API, Update Results from CRM or are entered by hand. Source plus External Event Id is unique, so a replay is dropped. Events flagged as test data are left out of the numbers.
+  - key: table:marketing_product;field:name
+    summary: "The product's display name."
+    content: |
+      Shown in lists and in the Campaigns widget. Up to {{maxLength:marketing_product.name}} characters.
+  - key: table:marketing_product;field:slug
+    summary: "A short unique identifier for the product, such as qqq."
+    content: |
+      Must be unique. Starter data is matched to existing products by slug, so changing it can cause a duplicate on the next load. Up to {{maxLength:marketing_product.slug}} characters.
+  - key: table:marketing_product;field:tagline
+    summary: "A one-line description of the product."
+    content: |
+      Keep it to what the product's own sources say. Up to {{maxLength:marketing_product.tagline}} characters.
+  - key: table:marketing_product;field:license
+    summary: "The license the product is published under."
+    content: |
+      Record it from the repository or license page, with the source in Evidence Sources. Leave it empty rather than guess.
+  - key: table:marketing_product;field:summary
+    summary: "A short description of what the product is and does."
+    content: |
+      Write only what the evidence sources support. Content and agent drafts should not claim more than this.
+  - key: table:marketing_product;field:lastVerifiedDate
+    summary: "When the product's facts were last checked against their sources."
+    content: |
+      Update it each time you re-verify the product. Check Readiness separately flags evidence sources that are older than the stale-source limit.
+  - key: table:marketing_product;field:valuePropositions
+    summary: "The main reasons someone would use the product."
+    content: |
+      List them plainly. Back each one with a claim and a source.
+  - key: table:marketing_product;field:documentationUrl
+    summary: "Link to the product's official documentation."
+    content: |
+      Use the page the product itself publishes.
+  - key: table:marketing_product;field:maturity
+    summary: "How far along the product is."
+    content: |
+      One of: {{values:marketing_product_maturity}}. Check Readiness notes a Concept or Prelaunch product, and raises a Blocker when a campaign's adoption or commercial goal does not fit it.
+  - key: table:marketing_product;field:primaryUrl
+    summary: "The product's main website."
+    content: |
+      Use the product's own home page.
+  - key: table:marketing_product;field:repositoryUrl
+    summary: "Link to the product's source repository."
+    content: |
+      Use the official repository, not a fork or mirror.
+  - key: table:marketing_product;field:readinessNotes
+    summary: "Notes on whether the product is ready for marketing and what to avoid saying."
+    content: |
+      Record open discrepancies, such as sources that disagree, and which features are planned rather than released. The agent reads these notes in the product brief.
+  - key: table:marketing_product;field:releasesUrl
+    summary: "Link to the product's releases or changelog page."
+    content: |
+      Use it as the source for the latest release.
+  - key: table:marketing_product;field:platforms
+    summary: "The platforms the product supports."
+    content: |
+      List only what is documented, for example the operating systems and runtime versions.
+  - key: table:marketing_product;field:adoptionPath
+    summary: "How a new user gets started with the product."
+    content: |
+      Describe the steps from the official install or try page, and say what is not available yet.
+  - key: table:marketing_product;field:latestRelease
+    summary: "The latest release and its date."
+    content: |
+      Record the version and release date from the releases page, and mark pre-releases as such.
+  - key: table:marketing_product;field:ownerUserId
+    summary: "The person responsible for this product's marketing."
+    content: |
+      Enter the user id of the owner.
+  - key: table:marketing_audience;field:description
+    summary: "Who this audience is."
+    content: |
+      A short description of the group, for example their role or situation.
+  - key: table:marketing_audience;field:name
+    summary: "The audience's name."
+    content: |
+      Shown when you choose an audience for a campaign. Up to {{maxLength:marketing_audience.name}} characters.
+  - key: table:marketing_audience;field:problem
+    summary: "The problem this audience has that the product addresses."
+    content: |
+      State it in their terms, not the product's.
+  - key: table:marketing_audience;field:productId
+    summary: "The product this audience is for."
+    content: |
+      Required. A campaign can only use an audience that belongs to its own product.
+  - key: table:marketing_audience;field:usefulTask
+    summary: "The task this audience wants to get done with the product."
+    content: |
+      Describe a concrete first task, such as the one a new user would try.
+  - key: table:marketing_audience;field:evidenceNote
+    summary: "Where the evidence for this audience comes from."
+    content: |
+      Say what supports the problem and task, or note that nothing does yet.
+  - key: table:marketing_evidence_source;field:title
+    summary: "A short name for the source."
+    content: |
+      Shown in lists and when a claim cites it. Up to {{maxLength:marketing_evidence_source.title}} characters.
+  - key: table:marketing_evidence_source;field:url
+    summary: "The address of the source."
+    content: |
+      Link to the exact page, release or file that the claims rely on.
+  - key: table:marketing_evidence_source;field:excerpt
+    summary: "A short quote from the source."
+    content: |
+      Copy the relevant text exactly so a reviewer can check a claim without reopening the page.
+  - key: table:marketing_evidence_source;field:notes
+    summary: "Anything a reviewer should know about this source."
+    content: |
+      For example that it is out of date, disagrees with another source, or is a mirror.
+  - key: table:marketing_evidence_source;field:verifiedBy
+    summary: "Who checked this source."
+    content: |
+      The person or process that last verified it.
+  - key: table:marketing_evidence_source;field:publisher
+    summary: "Who publishes the source."
+    content: |
+      For example the product's own website or a package registry.
+  - key: table:marketing_evidence_source;field:productId
+    summary: "The product this source belongs to."
+    content: |
+      Required. A claim can only cite a source from its own product.
+  - key: table:marketing_evidence_source;field:verifiedDate
+    summary: "When the source was last checked."
+    content: |
+      Check Readiness flags the source as stale once this date is older than the stale-source limit (90 days unless the host changes it), and also when it is empty.
+  - key: table:marketing_evidence_source;field:sourceType
+    summary: "What kind of source it is."
+    content: |
+      One of: {{values:marketing_source_type}}.
+  - key: table:marketing_claim;field:status
+    summary: "Whether the claim can be stated as fact."
+    content: |
+      One of: {{values:marketing_claim_status}}. Only a Released claim should be stated as true now. An agent draft that cites any other status raises a Blocker finding.
+  - key: table:marketing_claim;field:sourceId
+    summary: "The evidence source that supports the claim."
+    content: |
+      Check Readiness flags a claim with no source. Only sources from the same product are offered.
+  - key: table:marketing_claim;field:category
+    summary: "A free-form group for the claim."
+    content: |
+      For example license, platform or feature. Up to {{maxLength:marketing_claim.category}} characters.
+  - key: table:marketing_claim;field:productId
+    summary: "The product the claim is about."
+    content: |
+      Required.
+  - key: table:marketing_claim;field:evidenceQuote
+    summary: "The words in the source that support the claim."
+    content: |
+      Copy them exactly. Without a quote a reviewer has to find the evidence again.
+  - key: table:marketing_claim;field:verifiedDate
+    summary: "When the claim was last checked against its source."
+    content: |
+      Update it each time you re-verify the claim.
+  - key: table:marketing_claim;field:claimText
+    summary: "The statement itself."
+    content: |
+      Write one plain, checkable fact. Up to {{maxLength:marketing_claim.claimText}} characters.
+  - key: table:marketing_claim;field:discrepancyNote
+    summary: "How sources disagree about this claim."
+    content: |
+      Fill it in when the status is Disputed, saying what each source says. Check Readiness flags disputed claims.
+  - key: table:marketing_campaign;field:name
+    summary: "The campaign's name."
+    content: |
+      Shown in lists, the Campaigns widget and the agent's campaign brief. Up to {{maxLength:marketing_campaign.name}} characters.
+  - key: table:marketing_campaign;field:status
+    summary: "Where the campaign stands."
+    content: |
+      One of: {{values:marketing_campaign_status}}. People set it. The Campaigns widget on the dashboard lists every campaign that is not Completed or Cancelled.
+  - key: table:marketing_campaign;field:problem
+    summary: "The problem the campaign speaks to."
+    content: |
+      State it from the audience's point of view. The agent reads it in the campaign brief.
+  - key: table:marketing_campaign;field:goal
+    summary: "What the campaign is for."
+    content: |
+      One of: {{values:marketing_campaign_goal}}. Check Readiness raises a Blocker when an adoption or commercial goal is set on a Concept or Prelaunch product, and warns when a Commercial demand campaign has no lead rule.
+  - key: table:marketing_campaign;field:qualifyRequireEmailConsent
+    summary: "Whether a contact also needs current email consent to count as a lead."
+    content: |
+      Used by Update Results from CRM together with the lead rule. It only applies when the lead rule is turned on.
+  - key: table:marketing_campaign;field:leadQualificationEnabled
+    summary: "Turns on the lead rule for this campaign."
+    content: |
+      While it is off, Update Results from CRM qualifies nobody, because without an explicit rule nobody is a lead. Check Readiness warns when a Commercial demand campaign has no rule.
+  - key: table:marketing_campaign;field:qualifyMinFormSubmissions
+    summary: "How many attributed form submissions make a contact a lead."
+    content: |
+      Counts CRM form submissions attributed to the campaign's UTM campaign. A value below 1 is treated as 1.
+  - key: table:marketing_campaign;field:leadQualificationNote
+    summary: "A plain-language note on the lead rule."
+    content: |
+      Explain for reviewers what counts as a lead and why. The rule itself comes from the fields above.
+  - key: table:marketing_campaign;field:productId
+    summary: "The product this campaign promotes."
+    content: |
+      Required. Content, findings, metrics and outcome events of the campaign follow this product.
+  - key: table:marketing_campaign;field:ownerUserId
+    summary: "The person responsible for the campaign."
+    content: |
+      Enter the user id of the owner.
+  - key: table:marketing_campaign;field:messaging
+    summary: "The key messages of the campaign."
+    content: |
+      Say only what the product's claims support. The agent reads it in the campaign brief.
+  - key: table:marketing_campaign;field:audienceId
+    summary: "The audience the campaign is for."
+    content: |
+      Only audiences of the campaign's product are offered. Check Readiness warns when the campaign names none.
+  - key: table:marketing_campaign;field:channelPlan
+    summary: "Which channels you plan to use and why."
+    content: |
+      A planning note. The channel that content actually goes to is chosen on each content item.
+  - key: table:marketing_campaign;field:callToAction
+    summary: "What you want the reader to do."
+    content: |
+      Check Readiness warns when a campaign has no call to action or no destination. Up to {{maxLength:marketing_campaign.callToAction}} characters.
+  - key: table:marketing_campaign;field:objective
+    summary: "What the campaign is meant to achieve."
+    content: |
+      One or two plain sentences. The agent reads it in the campaign brief.
+  - key: table:marketing_campaign;field:destinationUrl
+    summary: "Where the call to action sends people."
+    content: |
+      Use the page a reader should land on, such as an install or sign-up page.
+  - key: table:marketing_campaign;field:successCriteria
+    summary: "How you will know the campaign worked."
+    content: |
+      Name results you can actually measure. Check Readiness warns when this is empty.
+  - key: table:marketing_campaign;field:utmCampaign
+    summary: "The UTM campaign value that attributes CRM form submissions to this campaign."
+    content: |
+      Update Results from CRM needs it and refuses to run without it. Up to {{maxLength:marketing_campaign.utmCampaign}} characters.
+  - key: table:marketing_campaign;field:scheduleEnd
+    summary: "When the campaign is planned to end."
+    content: |
+      A planning date for the campaign. Sending is scheduled on each content item, not here.
+  - key: table:marketing_campaign;field:scheduleStart
+    summary: "When the campaign is planned to start."
+    content: |
+      A planning date for the campaign. Sending is scheduled on each content item, not here.
+  - key: table:marketing_channel;field:name
+    summary: "The channel's name."
+    content: |
+      Must be unique. Shown when you choose a channel for content.
+  - key: table:marketing_channel;field:maxRecipientsPerExecution
+    summary: "The most recipients one execution may have."
+    content: |
+      An execution over the limit is blocked, because bulk outreach is not supported. Leave it empty to use the host's default, which is 50 unless changed.
+  - key: table:marketing_channel;field:allowsAutomation
+    summary: "Whether Marketing may send to this channel itself."
+    content: |
+      When off, executions for the channel are blocked and posting is done by hand. The test transport is exempt.
+  - key: table:marketing_channel;field:rateLimitPerHour
+    summary: "The most sends allowed per hour on this channel."
+    content: |
+      A send over the limit is postponed, not failed. Leave it empty for no limit.
+  - key: table:marketing_channel;field:rulesVerifiedDate
+    summary: "When someone last read the channel's rules."
+    content: |
+      Check Readiness warns about content whose channel has no verification date, or whose AI-content rule is Unknown. Record the date every time the rules are re-read.
+  - key: table:marketing_channel;field:channelType
+    summary: "What kind of channel it is."
+    content: |
+      One of: {{values:marketing_channel_type}}. The transport must serve this type.
+  - key: table:marketing_channel;field:transportName
+    summary: "The name of the registered transport that sends for this channel."
+    content: |
+      Schedule refuses a channel whose transport is not registered in the application. A registered transport that is not usable yet lets the execution be created, but blocks it until the transport is usable. Leave it empty for channels posted by hand.
+  - key: table:marketing_channel;field:aiContentPolicy
+    summary: "Whether text written by the agent may go to this channel."
+    content: |
+      One of: {{values:marketing_ai_content_policy}}. Approve and execution both check it. A new community channel should start as Not allowed or Unknown until its current rules are recorded.
+  - key: table:marketing_channel;field:isActive
+    summary: "Whether content can be sent to this channel."
+    content: |
+      The execution-time checks block a send to an inactive channel.
+  - key: table:marketing_channel;field:rulesSourceUrl
+    summary: "Where the channel's rules are published."
+    content: |
+      Link to the page you read when you recorded the rules.
+  - key: table:marketing_channel;field:rulesSummary
+    summary: "A summary of the channel's rules."
+    content: |
+      Record what the rules say about posting, automation and AI-written content. Never loosen a channel without its rules on file.
+  - key: table:marketing_content;field:status
+    summary: "Where the content is in its approval and sending lifecycle."
+    content: |
+      One of: {{values:marketing_content_status}}. People cannot edit it. It changes only through the actions.
+  - key: table:marketing_content;field:title
+    summary: "The title of the publication."
+    content: |
+      Part of the approved text. Up to {{maxLength:marketing_content.title}} characters.
+  - key: table:marketing_content;field:body
+    summary: "The text that will be published."
+    content: |
+      Part of the approved text, and required before the content can be submitted for review. Changing it after approval voids the approval and adds a revision.
+  - key: table:marketing_content;field:productId
+    summary: "The product the content is about."
+    content: |
+      It always follows the campaign and cannot be set separately.
+  - key: table:marketing_content;field:ownerUserId
+    summary: "The person responsible for the content."
+    content: |
+      Filled in with the creating user when left empty.
+  - key: table:marketing_content;field:agentRunId
+    summary: "The agent run that wrote the content, if any."
+    content: |
+      Set by the agent. It is empty for content written by a person.
+  - key: table:marketing_content;field:callToAction
+    summary: "What the reader is asked to do."
+    content: |
+      Part of the approved text.
+  - key: table:marketing_content;field:channelId
+    summary: "The channel the content will be sent to."
+    content: |
+      Part of the approved text, and required before the content can be submitted for review. The channel must be active. Approve checks its AI-content rule, and Schedule needs a channel with a registered transport.
+  - key: table:marketing_content;field:recipientScope
+    summary: "Who receives the content."
+    content: |
+      Part of the approved text. Leave it empty or enter public for a publication with no recipient list, or enter crm-list:ID or crm-contact:ID for CRM recipients, whose consent is checked again when sending. Email channels need a CRM scope.
+  - key: table:marketing_content;field:campaignId
+    summary: "The campaign the content belongs to."
+    content: |
+      Required. Its product becomes the content's product.
+  - key: table:marketing_content;field:scheduledFor
+    summary: "When the content should be sent."
+    content: |
+      Part of the approved text, to the second, and required before the content can be submitted for review. The worker sends it at or after this time.
+  - key: table:marketing_content;field:contentHash
+    summary: "A fingerprint of the approved fields."
+    content: |
+      Calculated by Marketing. An approval is tied to one hash, and the content can be sent only while its hash still matches the approval.
+  - key: table:marketing_content;field:authorType
+    summary: "Whether a person or the marketing agent wrote the current revision."
+    content: |
+      One of: {{values:marketing_author_type}}. Channels may refuse or require disclosure for agent-written text.
+  - key: table:marketing_content;field:revisionNumber
+    summary: "The number of the current revision."
+    content: |
+      Starts at 1 and goes up with each change to the approved fields. The history is in Revision History.
+  - key: table:marketing_content;field:destinationUrl
+    summary: "Where the content sends readers."
+    content: |
+      Part of the approved text.
+  - key: table:marketing_content_revision;field:title
+    summary: "The title as of this revision."
+    content: |
+      A copy kept for the history. Revisions are never edited.
+  - key: table:marketing_content_revision;field:body
+    summary: "The text as of this revision."
+    content: |
+      A copy kept for the history. Revisions are never edited.
+  - key: table:marketing_content_revision;field:productId
+    summary: "The product the content belongs to."
+    content: |
+      Copied from the content.
+  - key: table:marketing_content_revision;field:agentRunId
+    summary: "The agent run that wrote this revision, if any."
+    content: |
+      Empty for revisions written by a person.
+  - key: table:marketing_content_revision;field:callToAction
+    summary: "The call to action as of this revision."
+    content: |
+      A copy kept for the history.
+  - key: table:marketing_content_revision;field:channelId
+    summary: "The channel as of this revision."
+    content: |
+      A copy kept for the history.
+  - key: table:marketing_content_revision;field:recipientScope
+    summary: "The recipient scope as of this revision."
+    content: |
+      A copy kept for the history.
+  - key: table:marketing_content_revision;field:scheduledFor
+    summary: "The scheduled time as of this revision."
+    content: |
+      A copy kept for the history.
+  - key: table:marketing_content_revision;field:contentHash
+    summary: "The fingerprint of this revision."
+    content: |
+      Approvals refer to this value, so it shows which revision a person approved.
+  - key: table:marketing_content_revision;field:authorType
+    summary: "Whether a person or the agent wrote this revision."
+    content: |
+      One of: {{values:marketing_author_type}}.
+  - key: table:marketing_content_revision;field:revisionNumber
+    summary: "The number of this revision."
+    content: |
+      Unique within the content item. The first revision is 1.
+  - key: table:marketing_content_revision;field:destinationUrl
+    summary: "The destination as of this revision."
+    content: |
+      A copy kept for the history.
+  - key: table:marketing_content_revision;field:authorUserId
+    summary: "The user who made this revision."
+    content: |
+      If the host requires a different approver, this is the person who may not approve the revision.
+  - key: table:marketing_content_revision;field:changeNote
+    summary: "A short note on why this revision was made."
+    content: |
+      Recorded automatically when the revision is added.
+  - key: table:marketing_content_revision;field:contentId
+    summary: "The content item this revision belongs to."
+    content: |
+      Required.
+  - key: table:marketing_approval;field:status
+    summary: "Whether the approval still counts."
+    content: |
+      One of: {{values:marketing_approval_status}}. Only an Active approval allows a send.
+  - key: table:marketing_approval;field:note
+    summary: "A note the approver added."
+    content: |
+      Optional.
+  - key: table:marketing_approval;field:productId
+    summary: "The product the approved content belongs to."
+    content: |
+      Copied from the content.
+  - key: table:marketing_approval;field:channelId
+    summary: "The channel that was approved."
+    content: |
+      Recorded at approval time.
+  - key: table:marketing_approval;field:recipientScope
+    summary: "The recipient scope that was approved."
+    content: |
+      Recorded at approval time.
+  - key: table:marketing_approval;field:scheduledFor
+    summary: "The send time that was approved."
+    content: |
+      Recorded at approval time. The worker does not send before it.
+  - key: table:marketing_approval;field:contentHash
+    summary: "The fingerprint of the exact text that was approved."
+    content: |
+      A send proceeds only while the content still has this hash.
+  - key: table:marketing_approval;field:revisionNumber
+    summary: "The revision that was approved."
+    content: |
+      Recorded at approval time.
+  - key: table:marketing_approval;field:destinationUrl
+    summary: "The destination that was approved."
+    content: |
+      Recorded at approval time.
+  - key: table:marketing_approval;field:invalidatedAt
+    summary: "When the approval stopped counting."
+    content: |
+      Empty while the approval is Active.
+  - key: table:marketing_approval;field:approvedAt
+    summary: "When the approval was given."
+    content: |
+      Recorded automatically.
+  - key: table:marketing_approval;field:revisionId
+    summary: "The revision record that was approved."
+    content: |
+      Links to the immutable revision.
+  - key: table:marketing_approval;field:contentId
+    summary: "The content item that was approved."
+    content: |
+      Required.
+  - key: table:marketing_approval;field:approvedByUserId
+    summary: "The user who approved."
+    content: |
+      Approving needs marketing.approve.hasAccess. A host can also require the approver to differ from the revision's author.
+  - key: table:marketing_approval;field:invalidatedReason
+    summary: "Why the approval stopped counting."
+    content: |
+      For example that the content was edited, so the approved revision no longer matches.
+  - key: table:marketing_execution;field:status
+    summary: "Where the execution is in sending."
+    content: |
+      One of: {{values:marketing_execution_status}}. Accepted by provider means the provider took the request, not that anyone received or read it. It changes only through actions and the worker.
+  - key: table:marketing_execution;field:productId
+    summary: "The product the content belongs to."
+    content: |
+      Copied from the content.
+  - key: table:marketing_execution;field:transportName
+    summary: "The transport that sends this execution."
+    content: |
+      Taken from the content's channel. A transport that is not registered in the application blocks the execution.
+  - key: table:marketing_execution;field:channelId
+    summary: "The channel the execution sends to."
+    content: |
+      Taken from the approved content.
+  - key: table:marketing_execution;field:campaignId
+    summary: "The campaign the content belongs to."
+    content: |
+      Copied from the content.
+  - key: table:marketing_execution;field:scheduledFor
+    summary: "When the execution is due."
+    content: |
+      Taken from the approval. The worker runs it at or after this time.
+  - key: table:marketing_execution;field:lastAttemptAt
+    summary: "When the latest attempt started."
+    content: |
+      Empty until the first attempt.
+  - key: table:marketing_execution;field:idempotencyKey
+    summary: "A unique key for this approval, passed to the transport."
+    content: |
+      It lets the transport drop a repeated send. A retry after Mark Not Sent and Retry reuses the same key.
+  - key: table:marketing_execution;field:nextAttemptAt
+    summary: "When the next try is due."
+    content: |
+      Set after a postponed send or a retryable failure. A retry waits longer each time.
+  - key: table:marketing_execution;field:maxAttempts
+    summary: "How many attempts are allowed before the execution fails."
+    content: |
+      Set from the host's default when the execution is scheduled, which is 3 unless changed. Mark Not Sent and Retry raises it so one more attempt is possible.
+  - key: table:marketing_execution;field:revisionId
+    summary: "The revision that will be sent."
+    content: |
+      The revision that was approved.
+  - key: table:marketing_execution;field:approvalId
+    summary: "The approval that allows the send."
+    content: |
+      Required. The approval must still be Active, with the same content hash, when the worker runs.
+  - key: table:marketing_execution;field:attemptCount
+    summary: "How many attempts have started."
+    content: |
+      Each attempt is listed under Attempts.
+  - key: table:marketing_execution;field:contentId
+    summary: "The content being sent."
+    content: |
+      Required.
+  - key: table:marketing_execution;field:completedAt
+    summary: "When the execution reached its final state."
+    content: |
+      Empty while it can still run.
+  - key: table:marketing_execution;field:statusDetail
+    summary: "A plain explanation of the current status."
+    content: |
+      Read it first when an execution is Blocked, Failed or needs reconciliation. It names the check that stopped it.
+  - key: table:marketing_execution;field:leaseOwner
+    summary: "The worker that currently holds the execution."
+    content: |
+      Set while it is Running and cleared afterwards.
+  - key: table:marketing_execution;field:isTestData
+    summary: "Whether this execution only went to the test transport."
+    content: |
+      Test executions are left out of campaign results.
+  - key: table:marketing_execution;field:leaseExpiresAt
+    summary: "When the worker's hold on the execution runs out."
+    content: |
+      If a worker stops mid-send, the next Run Due Executions marks the execution as needing reconciliation.
+  - key: table:marketing_execution;field:providerReceiptId
+    summary: "The provider's receipt for the accepted request."
+    content: |
+      Proof that the provider accepted the request. It does not show delivery or engagement.
+  - key: table:marketing_execution;field:requestedByUserId
+    summary: "The user who scheduled the execution."
+    content: |
+      Recorded for the audit trail.
+  - key: table:marketing_execution_attempt;field:message
+    summary: "What the transport reported."
+    content: |
+      Read it to see why an attempt failed or was ambiguous.
+  - key: table:marketing_execution_attempt;field:outcome
+    summary: "How the attempt ended."
+    content: |
+      One of: {{values:marketing_attempt_outcome}}.
+  - key: table:marketing_execution_attempt;field:productId
+    summary: "The product the content belongs to."
+    content: |
+      Copied from the execution.
+  - key: table:marketing_execution_attempt;field:recipientCount
+    summary: "How many recipients the attempt covered."
+    content: |
+      Recipients who are no longer eligible at send time are left out first.
+  - key: table:marketing_execution_attempt;field:workerName
+    summary: "The worker that made the attempt."
+    content: |
+      Useful when you run more than one worker.
+  - key: table:marketing_execution_attempt;field:durationMs
+    summary: "How long the attempt took, in milliseconds."
+    content: |
+      Measured around the transport call.
+  - key: table:marketing_execution_attempt;field:attemptNumber
+    summary: "The number of the attempt."
+    content: |
+      The first attempt is 1.
+  - key: table:marketing_execution_attempt;field:providerStatus
+    summary: "The status the provider returned."
+    content: |
+      Kept as the provider reported it.
+  - key: table:marketing_execution_attempt;field:finishedAt
+    summary: "When the attempt finished."
+    content: |
+      Empty if it never completed.
+  - key: table:marketing_execution_attempt;field:executionId
+    summary: "The execution this attempt belongs to."
+    content: |
+      Required.
+  - key: table:marketing_execution_attempt;field:startedAt
+    summary: "When the attempt started."
+    content: |
+      Recorded automatically.
+  - key: table:marketing_execution_attempt;field:providerReceiptId
+    summary: "The provider's receipt for this attempt."
+    content: |
+      Present when the provider accepted the request.
+  - key: table:marketing_test_delivery;field:title
+    summary: "The title the test transport received."
+    content: |
+      Stored instead of being sent.
+  - key: table:marketing_test_delivery;field:body
+    summary: "The text the test transport received."
+    content: |
+      Stored instead of being sent.
+  - key: table:marketing_test_delivery;field:productId
+    summary: "The product the content belongs to."
+    content: |
+      Copied from the execution.
+  - key: table:marketing_test_delivery;field:destinationUrl
+    summary: "The destination the test transport received."
+    content: |
+      Stored instead of being sent.
+  - key: table:marketing_test_delivery;field:idempotencyKey
+    summary: "The key the execution sent with the request."
+    content: |
+      Together with the recipient it is unique. A repeat of the same pair is counted, not stored again.
+  - key: table:marketing_test_delivery;field:channelName
+    summary: "The name of the channel at the time of the test."
+    content: |
+      Recorded as text.
+  - key: table:marketing_test_delivery;field:duplicateCount
+    summary: "How many times the same request was repeated."
+    content: |
+      A repeat is counted here instead of creating another row.
+  - key: table:marketing_test_delivery;field:recipientKey
+    summary: "The recipient the request was for."
+    content: |
+      A stable key for the recipient.
+  - key: table:marketing_test_delivery;field:receiptId
+    summary: "The receipt the test transport issued."
+    content: |
+      It stands in for a provider receipt.
+  - key: table:marketing_test_delivery;field:acceptedAt
+    summary: "When the test transport accepted the request."
+    content: |
+      Recorded automatically.
+  - key: table:marketing_test_delivery;field:executionId
+    summary: "The execution that was tested."
+    content: |
+      Links back to the execution.
+  - key: table:marketing_agent_run;field:task
+    summary: "What the agent was asked to do."
+    content: |
+      One of: {{values:marketing_agent_task}}.
+  - key: table:marketing_agent_run;field:errorMessage
+    summary: "Why the run failed or was cancelled."
+    content: |
+      Empty for a run that succeeded.
+  - key: table:marketing_agent_run;field:status
+    summary: "Where the run is."
+    content: |
+      One of: {{values:marketing_agent_run_status}}. A restart can leave a run Running. The next Run Due Executions marks it Failed.
+  - key: table:marketing_agent_run;field:summary
+    summary: "The agent's final summary of what it did."
+    content: |
+      Secrets are redacted before it is saved.
+  - key: table:marketing_agent_run;field:model
+    summary: "The model that was used."
+    content: |
+      Taken from the Marketing Policy override or the host's configuration.
+  - key: table:marketing_agent_run;field:productId
+    summary: "The product the run was for."
+    content: |
+      Copied from the campaign.
+  - key: table:marketing_agent_run;field:campaignId
+    summary: "The campaign the run was for."
+    content: |
+      The agent actions run on campaigns.
+  - key: table:marketing_agent_run;field:providerName
+    summary: "The model provider that was used."
+    content: |
+      Taken from the Marketing Policy override, the host's configuration, or the single registered provider.
+  - key: table:marketing_agent_run;field:contentId
+    summary: "The content item the run was about, if any."
+    content: |
+      Empty for runs on a campaign as a whole.
+  - key: table:marketing_agent_run;field:cacheReadTokens
+    summary: "Input tokens the provider served from its cache."
+    content: |
+      Part of the usage record.
+  - key: table:marketing_agent_run;field:outputTokens
+    summary: "Tokens the model wrote."
+    content: |
+      Counted toward the daily token budget with the input tokens.
+  - key: table:marketing_agent_run;field:inputTokens
+    summary: "Tokens sent to the model."
+    content: |
+      Counted toward the daily token budget with the output tokens.
+  - key: table:marketing_agent_run;field:finishedAt
+    summary: "When the run ended."
+    content: |
+      Empty while it is running.
+  - key: table:marketing_agent_run;field:startedAt
+    summary: "When the run began."
+    content: |
+      Recorded automatically.
+  - key: table:marketing_agent_run;field:heartbeatAt
+    summary: "When the running agent last checked in."
+    content: |
+      Updated when the run starts and before each model call. A Running run that has not checked in for longer than its time limit plus a minute is marked Failed, because its server stopped, and no longer counts against the concurrent-run limit.
+  - key: table:marketing_agent_run;field:toolCalls
+    summary: "How many tool calls the agent made."
+    content: |
+      Limited per run by the host and by the Marketing Policy.
+  - key: table:marketing_agent_run;field:modelCalls
+    summary: "How many times the model was called."
+    content: |
+      Limited per run by the host.
+  - key: table:marketing_agent_run;field:outputJson
+    summary: "The structured output the run produced, as JSON."
+    content: |
+      For example the plan it proposed.
+  - key: table:marketing_agent_run;field:draftsCreated
+    summary: "How many drafts the run saved."
+    content: |
+      Every draft is a Draft written by the agent. A person still has to review and approve it.
+  - key: table:marketing_agent_run;field:costMicros
+    summary: "What the run cost, in millionths of a US dollar."
+    content: |
+      Empty when the model has no known price. Prices are never guessed.
+  - key: table:marketing_agent_run;field:instructions
+    summary: "Extra instructions given to the agent."
+    content: |
+      Passed to the agent along with the task and the record ids.
+  - key: table:marketing_agent_run;field:findingsCreated
+    summary: "How many findings the run recorded."
+    content: |
+      They are listed under Findings.
+  - key: table:marketing_agent_run;field:requestedByUserId
+    summary: "The user who started the run."
+    content: |
+      The run uses that user's permissions to read data.
+  - key: table:marketing_agent_step;field:summary
+    summary: "A short description of the step."
+    content: |
+      Cut to 1000 characters.
+  - key: table:marketing_agent_step;field:seq
+    summary: "The step's position in the run."
+    content: |
+      The first step is 1.
+  - key: table:marketing_agent_step;field:outcome
+    summary: "How the step ended."
+    content: |
+      For tool calls this is the tool's outcome, such as OK.
+  - key: table:marketing_agent_step;field:kind
+    summary: "What kind of step it was."
+    content: |
+      One of: {{values:marketing_agent_step_kind}}.
+  - key: table:marketing_agent_step;field:productId
+    summary: "The product the run was for."
+    content: |
+      Copied from the run.
+  - key: table:marketing_agent_step;field:agentRunId
+    summary: "The run this step belongs to."
+    content: |
+      Required.
+  - key: table:marketing_agent_step;field:outputTokens
+    summary: "Tokens the model wrote in this step."
+    content: |
+      Only model calls use tokens.
+  - key: table:marketing_agent_step;field:inputTokens
+    summary: "Tokens sent to the model in this step."
+    content: |
+      Only model calls use tokens.
+  - key: table:marketing_agent_step;field:durationMs
+    summary: "How long the step took, in milliseconds."
+    content: |
+      Measured around the call.
+  - key: table:marketing_agent_step;field:toolName
+    summary: "The tool that was called."
+    content: |
+      Empty for model calls and checks.
+  - key: table:marketing_agent_step;field:inputJson
+    summary: "What the agent sent to the tool, as JSON."
+    content: |
+      Recorded for review.
+  - key: table:marketing_agent_step;field:resultJson
+    summary: "What the tool returned to the model, as JSON."
+    content: |
+      Exactly as the model saw it, with secrets redacted.
+  - key: table:marketing_finding;field:severity
+    summary: "How serious the finding is."
+    content: |
+      One of: {{values:marketing_finding_severity}}. An open Blocker on a content item stops it being approved.
+  - key: table:marketing_finding;field:status
+    summary: "Whether the finding still needs action."
+    content: |
+      One of: {{values:marketing_finding_status}}. Mark Resolved and Dismiss only work on open findings.
+  - key: table:marketing_finding;field:title
+    summary: "A short name for the finding."
+    content: |
+      Up to {{maxLength:marketing_finding.title}} characters.
+  - key: table:marketing_finding;field:claimId
+    summary: "The claim the finding is about."
+    content: |
+      Only claims of the finding's product are offered.
+  - key: table:marketing_finding;field:origin
+    summary: "Where the finding came from."
+    content: |
+      CHECK for a readiness check, AGENT for the marketing agent.
+  - key: table:marketing_finding;field:detail
+    summary: "What is wrong, in full."
+    content: |
+      Explain the problem so a reviewer can act without opening anything else.
+  - key: table:marketing_finding;field:sourceId
+    summary: "The evidence source the finding is about."
+    content: |
+      Only sources of the finding's product are offered.
+  - key: table:marketing_finding;field:productId
+    summary: "The product the finding is about."
+    content: |
+      Follows the campaign when one is chosen.
+  - key: table:marketing_finding;field:agentRunId
+    summary: "The agent run that recorded the finding."
+    content: |
+      Empty for findings from a readiness check or a person.
+  - key: table:marketing_finding;field:campaignId
+    summary: "The campaign the finding is about."
+    content: |
+      Only campaigns of the finding's product are offered.
+  - key: table:marketing_finding;field:contentId
+    summary: "The content item the finding is about."
+    content: |
+      An open Blocker here stops the content being approved.
+  - key: table:marketing_finding;field:recommendation
+    summary: "What to do about it."
+    content: |
+      A suggested next step.
+  - key: table:marketing_finding;field:findingType
+    summary: "What kind of finding it is."
+    content: |
+      One of: {{values:marketing_finding_type}}.
+  - key: table:marketing_metric;field:eventType
+    summary: "The type of outcome event this metric counts."
+    content: |
+      Must match the event type on the outcome events. Up to {{maxLength:marketing_metric.eventType}} characters.
+  - key: table:marketing_metric;field:name
+    summary: "A short name for the metric."
+    content: |
+      Shown in the campaign's Results.
+  - key: table:marketing_metric;field:target
+    summary: "The result you are aiming for."
+    content: |
+      Shown next to the result in Results. Leave it empty if you have no target.
+  - key: table:marketing_metric;field:notes
+    summary: "Anything a reader of the results should know."
+    content: |
+      For example how the events are gathered.
+  - key: table:marketing_metric;field:stage
+    summary: "The funnel stage the metric belongs to."
+    content: |
+      One of: {{values:marketing_funnel_stage}}. Stages are reported separately and never added together.
+  - key: table:marketing_metric;field:productId
+    summary: "The product the campaign belongs to."
+    content: |
+      Follows the campaign.
+  - key: table:marketing_metric;field:campaignId
+    summary: "The campaign the metric measures."
+    content: |
+      Required. Only campaigns of the product are offered.
+  - key: table:marketing_metric;field:countMode
+    summary: "How events are counted."
+    content: |
+      One of: {{values:marketing_count_mode}}. Results show both counts, and unique actors need an actor key on the events.
+  - key: table:marketing_metric;field:instrumentationStatus
+    summary: "How fully the metric can actually be measured."
+    content: |
+      One of: {{values:marketing_instrumentation_status}}. Not instrumented shows Not measured instead of 0, and Partially instrumented is a lower bound.
+  - key: table:marketing_outcome_event;field:eventType
+    summary: "What happened."
+    content: |
+      Group events by type so a metric can count them. Up to {{maxLength:marketing_outcome_event.eventType}} characters.
+  - key: table:marketing_outcome_event;field:source
+    summary: "Where the event came from."
+    content: |
+      With External Event Id it forms a unique pair. Examples are crm and a provider name.
+  - key: table:marketing_outcome_event;field:note
+    summary: "A short note about the event."
+    content: |
+      Optional.
+  - key: table:marketing_outcome_event;field:stage
+    summary: "The funnel stage of the event."
+    content: |
+      One of: {{values:marketing_funnel_stage}}.
+  - key: table:marketing_outcome_event;field:productId
+    summary: "The product the campaign belongs to."
+    content: |
+      Follows the campaign.
+  - key: table:marketing_outcome_event;field:campaignId
+    summary: "The campaign the event counts toward."
+    content: |
+      Only campaigns of the product are offered.
+  - key: table:marketing_outcome_event;field:contentId
+    summary: "The content item the event relates to."
+    content: |
+      Optional.
+  - key: table:marketing_outcome_event;field:isTestData
+    summary: "Whether the event comes from a test or fixture."
+    content: |
+      Test events are excluded from the numbers, with a count shown.
+  - key: table:marketing_outcome_event;field:executionId
+    summary: "The execution that caused the event."
+    content: |
+      Optional.
+  - key: table:marketing_outcome_event;field:actorKey
+    summary: "An anonymous, stable id for the person or account behind the event."
+    content: |
+      Never use an email address or a name. It is how unique actors are counted. Up to {{maxLength:marketing_outcome_event.actorKey}} characters.
+  - key: table:marketing_outcome_event;field:externalEventId
+    summary: "The event's id in the system it came from."
+    content: |
+      With Source it must be unique, which is how replays are dropped.
+  - key: table:marketing_outcome_event;field:occurredAt
+    summary: "When the event happened."
+    content: |
+      The time at the source, not the time it was recorded.
+  - key: table:marketing_outcome_event;field:quantity
+    summary: "How many times the event counts for."
+    content: |
+      Raw event counts add up the quantities.
+  - key: table:marketing_policy;field:name
+    summary: "The policy's name."
+    content: |
+      Must be unique. Marketing reads the row named default.
+  - key: table:marketing_policy;field:model
+    summary: "Overrides the model the agent uses."
+    content: |
+      Leave it empty to use the host's configured model.
+  - key: table:marketing_policy;field:monthlyCostLimitMicros
+    summary: "The monthly cost budget for agent runs, in millionths of a US dollar."
+    content: |
+      For example 25000000 is USD 25. A run is refused when the budget is used up.
+  - key: table:marketing_policy;field:killSwitchReason
+    summary: "Why a switch was turned off."
+    content: |
+      Record the reason when you stop the agent or sending.
+  - key: table:marketing_policy;field:maxConcurrentAgentRuns
+    summary: "Overrides how many agent runs may run at once."
+    content: |
+      Leave it empty to use the host's limit, which is 2 unless changed.
+  - key: table:marketing_policy;field:executionEnabled
+    summary: "The kill switch for sending."
+    content: |
+      Must be explicitly on for anything to be sent. Turn it off to stop everything: scheduled executions stay Scheduled and resume when it is switched back on.
+  - key: table:marketing_policy;field:maxToolCallsPerRun
+    summary: "Overrides how many tool calls one agent run may make."
+    content: |
+      Leave it empty to use the host's limit, which is 24 unless changed.
+  - key: table:marketing_policy;field:agentEnabled
+    summary: "The kill switch for the agent."
+    content: |
+      Must be explicitly on for the agent to run.
+  - key: table:marketing_policy;field:dailyTokenLimit
+    summary: "The most tokens the agent may use in a day."
+    content: |
+      A run is refused when the day's budget is used up.
+  - key: table:marketing_policy;field:providerName
+    summary: "Overrides which model provider the agent uses."
+    content: |
+      Leave it empty to use the host's choice. With two providers registered, the host must name one.
+  - key: process:marketing_check_product_readiness;slot:help
+    summary: "Checks the selected products for missing evidence, weak claims and other gaps."
+    content: |
+      Reviews each product's evidence sources, claims, audiences and maturity, and records the problems as findings. It records Blocker, Warning and Info findings, and changes nothing else. Needs marketing.prepare.hasAccess.
+  - key: process:marketing_check_campaign_readiness;slot:help
+    summary: "Checks the selected campaigns for gaps in goal, audience, call to action and measurement."
+    content: |
+      Reviews each campaign's goal against its product's maturity, its audience, call to action and destination, success criteria, measurement plan, lead rule and the channel rules of its content, and records the problems as findings. It changes nothing else. Needs marketing.prepare.hasAccess.
+  - key: process:marketing_agent_plan;slot:help
+    summary: "Asks the agent to propose a plan for the selected campaigns, for a person to review."
+    content: |
+      Runs the readiness checks, then lets the agent read the campaign brief and propose a plan. It works on at most 3 campaigns at a time and records every step. The agent only prepares work and never publishes. Needs marketing.agent.hasAccess.
+  - key: process:marketing_agent_draft;slot:help
+    summary: "Asks the agent to write draft content for the selected campaigns, saved as drafts."
+    content: |
+      Every draft is saved as a Draft by the agent, and a person must still review and approve it. The agent refuses channels that do not allow AI-written text, and a draft that cites a claim that is not Released raises a Blocker finding. It works on at most 3 campaigns at a time. Needs marketing.agent.hasAccess.
+  - key: process:marketing_agent_review;slot:help
+    summary: "Asks the agent to check the claims and readiness of the selected campaigns. It records findings only."
+    content: |
+      The agent reads the campaign brief and the product's claims, and records findings. It changes nothing else. It works on at most 3 campaigns at a time. Needs marketing.agent.hasAccess.
+  - key: process:marketing_agent_analyze;slot:help
+    summary: "Asks the agent to analyze the results of the selected campaigns. It records findings only."
+    content: |
+      The agent reads the campaign results, which show counts and anonymous actor counts but no personal data, and records findings about what the numbers do and do not show. It works on at most 3 campaigns at a time. Needs marketing.agent.hasAccess.
+  - key: process:marketing_update_results_from_crm;slot:help
+    summary: "Imports a campaign's CRM form submissions as results and applies its lead rule."
+    content: |
+      Imports the form submissions attributed to the campaign's UTM campaign as Engagement events, skipping any already recorded. If the lead rule is on, each contact who meets it is logged as a note in the CRM and recorded once as a Qualified demand event. It refuses a campaign with no UTM campaign. Needs marketing.prepare.hasAccess.
+  - key: process:marketing_submit_for_review;slot:help
+    summary: "Sends the selected draft content for review."
+    content: |
+      Moves Draft content to In review. The content needs text, an active channel, a schedule and a valid recipient scope first. Needs marketing.prepare.hasAccess.
+  - key: process:marketing_approve;slot:help
+    summary: "Approves the selected content exactly as shown: text, destination, recipients and schedule."
+    content: |
+      Records your approval of this exact revision and moves the content to Approved. It needs marketing.approve.hasAccess, and needs the content to be In review, with no open Blocker findings, and to pass the channel's AI-content rule. If the host requires it, you cannot approve a revision you wrote. If the content changed since the review screen, it is skipped.
+  - key: process:marketing_return_to_draft;slot:help
+    summary: "Returns the selected content to Draft, revoking its approvals and cancelling pending executions."
+    content: |
+      Works on content that is In review, Approved, Scheduled, Paused or Failed. Use it to withdraw an item or to change it after approval. Needs marketing.approve.hasAccess.
+  - key: process:marketing_schedule;slot:help
+    summary: "Schedules the selected approved content to be sent at its approved time."
+    content: |
+      Creates one execution per approval, which the worker sends at or after the approved time. It refuses a channel whose transport is not registered, and an execution whose transport is registered but not yet usable is created and then blocked until it is. Needs marketing.execute.hasAccess.
+  - key: process:marketing_run_now;slot:help
+    summary: "Runs the selected scheduled executions now, if they are due."
+    content: |
+      Every check is repeated first, so the send can still be blocked or postponed. Works only on Scheduled executions. Needs marketing.execute.hasAccess.
+  - key: process:marketing_pause;slot:help
+    summary: "Pauses the selected scheduled executions so the worker skips them."
+    content: |
+      Works only on Scheduled executions. Use Resume to schedule them again. Needs marketing.execute.hasAccess.
+  - key: process:marketing_resume;slot:help
+    summary: "Resumes the selected paused executions."
+    content: |
+      Works only on Paused executions. Needs marketing.execute.hasAccess.
+  - key: process:marketing_cancel;slot:help
+    summary: "Cancels the selected executions and revokes their approvals."
+    content: |
+      Works on Scheduled, Paused, Blocked, Failed and Needs reconciliation executions. Needs marketing.execute.hasAccess.
+  - key: process:marketing_reconcile;slot:help
+    summary: "Asks the provider whether an ambiguous execution was actually accepted."
+    content: |
+      Works only on executions that need reconciliation. If the transport can look the request up and finds it, the execution becomes Accepted. If not, decide by hand with Mark as Accepted or Mark Not Sent and Retry. Needs marketing.execute.hasAccess.
+  - key: process:marketing_mark_accepted;slot:help
+    summary: "Records your decision that an ambiguous execution was accepted by the provider."
+    content: |
+      Use it after checking the provider's own records. Works only on executions that need reconciliation. Needs marketing.execute.hasAccess.
+  - key: process:marketing_mark_not_sent;slot:help
+    summary: "Records your decision that an ambiguous execution was not sent, and schedules it again."
+    content: |
+      Use it only after checking the provider's own records. The retry reuses the same idempotency key, so the transport can drop a repeat, and it needs the approval to still be Active. Works only on executions that need reconciliation. Needs marketing.execute.hasAccess.
+  - key: process:marketing_cancel_agent_run;slot:help
+    summary: "Cancels the selected agent runs."
+    content: |
+      Works on Queued or Running runs. A running run stops before its next model call. Needs marketing.agent.hasAccess.
+  - key: process:marketing_resolve_finding;slot:help
+    summary: "Marks the selected open findings as resolved."
+    content: |
+      Works only on open findings. Closing a Blocker finding also needs marketing.approve.hasAccess. Needs marketing.prepare.hasAccess.
+  - key: process:marketing_dismiss_finding;slot:help
+    summary: "Dismisses the selected open findings."
+    content: |
+      Works only on open findings. Dismissing a Blocker finding also needs marketing.approve.hasAccess. Needs marketing.prepare.hasAccess.
+  - key: process:marketing_load_starter_data;slot:help
+    summary: "Loads the bundled, verified starter products, evidence, claims, channels and policy."
+    content: |
+      Safe to run again: existing products (matched by slug), channels and the policy are left alone. Campaigns start as Draft and no results are included. Re-verify the sources before using them. Needs marketing.prepare.hasAccess.
+  - key: process:marketing_run_due_executions;slot:help
+    summary: "Sends every execution that is due, after repeating all the checks."
+    content: |
+      This is the execution worker. It recovers expired leases, marks agent runs that a restart interrupted as Failed, and runs each due execution. It runs on the host's scheduler if one is configured, or by hand here, and should run on one replica only. Needs marketing.execute.hasAccess.
+  - key: widget:marketing_needs_attention;slot:label
+    summary: "Content waiting for review, problem executions, open Blocker findings and recent failed agent runs."
+    content: |
+      Lists up to 25 items of each kind, and up to 10 failed agent runs from the last 7 days, each with a link.
+  - key: widget:marketing_campaigns;slot:label
+    summary: "Every campaign that is not Completed or Cancelled, with its content pipeline."
+    content: |
+      Shows the product, the goal and status, and how many content items are in each status.
+  - key: widget:marketing_agent_activity;slot:label
+    summary: "The ten most recent agent runs, with their usage and outcome."
+    content: |
+      Shows the task, status, calls and tokens used, and the drafts and findings created or why the run failed.
+  - key: widget:marketing_configuration_status;slot:label
+    summary: "The honest state of every model provider, transport and the CRM gateway."
+    content: |
+      Configured means the settings are present, not that a live call succeeded. Check it after any configuration change.
+  - key: widget:marketing_campaign_results;slot:label
+    summary: "Results for this campaign, stage by stage, with limitations."
+    content: |
+      Each metric shows raw events and unique actors, and Not measured when it is not instrumented, never 0. Test data is excluded. Provider acceptance is not delivery, and visits, stars and downloads are not adoption.
+  - key: widget:marketing_content_proposal;slot:label
+    summary: "The exact text, destination, recipients and schedule a reviewer approves."
+    content: |
+      Shows the channel and its AI-content rule, the revision and its author, the content hash and the approval status. An approval covers exactly what is shown, and any edit voids it.
+  - key: widget:marketing_product_join_marketing_audience;slot:label
+    summary: "The audiences this product is for."
+    content: |
+      Add an audience here.
+  - key: widget:marketing_product_join_marketing_evidence_source;slot:label
+    summary: "The sources this product's claims are checked against."
+    content: |
+      Add a source here.
+  - key: widget:marketing_product_join_marketing_claim;slot:label
+    summary: "The claims made about this product."
+    content: |
+      Add a claim here.
+  - key: widget:marketing_product_join_marketing_campaign;slot:label
+    summary: "The campaigns for this product."
+    content: |
+      Add a campaign here.
+  - key: widget:marketing_product_join_marketing_finding;slot:label
+    summary: "The findings about this product."
+    content: |
+      Findings are recorded by checks, the agent or people.
+  - key: widget:marketing_evidence_source_join_marketing_claim_by_sourceId;slot:label
+    summary: "The claims that rest on this source."
+    content: |
+      Add a claim here.
+  - key: widget:marketing_campaign_join_marketing_content;slot:label
+    summary: "The content written for this campaign."
+    content: |
+      Add a content item here.
+  - key: widget:marketing_campaign_join_marketing_metric;slot:label
+    summary: "The measurement plan: what this campaign will count."
+    content: |
+      Add a metric here.
+  - key: widget:marketing_campaign_join_marketing_finding;slot:label
+    summary: "The findings about this campaign."
+    content: |
+      Findings are recorded by checks, the agent or people.
+  - key: widget:marketing_campaign_join_marketing_agent_run;slot:label
+    summary: "The agent runs for this campaign."
+    content: |
+      Runs start from the agent actions.
+  - key: widget:marketing_campaign_join_marketing_outcome_event;slot:label
+    summary: "The result events recorded for this campaign."
+    content: |
+      Add an event here. Source plus External Event Id must be unique.
+  - key: widget:marketing_content_join_marketing_content_revision;slot:label
+    summary: "Every revision of this content."
+    content: |
+      Revisions are added automatically and never edited.
+  - key: widget:marketing_content_join_marketing_approval;slot:label
+    summary: "The approvals given for this content."
+    content: |
+      Only an Active approval allows a send.
+  - key: widget:marketing_content_join_marketing_execution;slot:label
+    summary: "The executions scheduled for this content."
+    content: |
+      Each approval has at most one execution.
+  - key: widget:marketing_content_join_marketing_finding;slot:label
+    summary: "The findings about this content."
+    content: |
+      An open Blocker stops the content being approved.
+  - key: widget:marketing_execution_join_marketing_execution_attempt;slot:label
+    summary: "The attempts made to send this execution."
+    content: |
+      Each attempt records its outcome and receipt.
+  - key: widget:marketing_execution_join_marketing_test_delivery;slot:label
+    summary: "What the test transport stored for this execution."
+    content: |
+      Only present for executions that used the test transport.
+  - key: widget:marketing_agent_run_join_marketing_agent_step;slot:label
+    summary: "Every step of this run, in order."
+    content: |
+      Includes what the model saw and what each tool returned.
+  - key: widget:marketing_agent_run_join_marketing_finding;slot:label
+    summary: "The findings this run recorded."
+    content: |
+      Findings are reviewed like any other.
+  - key: widget:marketing_agent_run_join_marketing_content;slot:label
+    summary: "The drafts this run wrote."
+    content: |
+      Each is a Draft that needs a person's review.
+  - key: possibleValueSource:marketing_product_maturity;slot:help
+    summary: "How far along a product is."
+    content: |
+      {{values:marketing_product_maturity}}. Concept and Prelaunch products have no public release, so adoption and commercial goals do not fit them.
+  - key: possibleValueSource:marketing_source_type;slot:help
+    summary: "The kind of an evidence source."
+    content: |
+      {{values:marketing_source_type}}.
+  - key: possibleValueSource:marketing_claim_status;slot:help
+    summary: "Whether a claim can be stated as fact."
+    content: |
+      {{values:marketing_claim_status}}. Only a Released claim should be stated as true now.
+  - key: possibleValueSource:marketing_campaign_goal;slot:help
+    summary: "What a campaign is for."
+    content: |
+      {{values:marketing_campaign_goal}}.
+  - key: possibleValueSource:marketing_campaign_status;slot:help
+    summary: "Where a campaign stands."
+    content: |
+      {{values:marketing_campaign_status}}. The dashboard lists campaigns that are not Completed or Cancelled.
+  - key: possibleValueSource:marketing_channel_type;slot:help
+    summary: "The kind of a channel."
+    content: |
+      {{values:marketing_channel_type}}. A transport serves only the channel types it supports.
+  - key: possibleValueSource:marketing_ai_content_policy;slot:help
+    summary: "Whether AI-written text may go to a channel."
+    content: |
+      {{values:marketing_ai_content_policy}}. With disclosure requires the disclosure text in the body. Unknown refuses agent-written text until the channel's rules are recorded.
+  - key: possibleValueSource:marketing_content_status;slot:help
+    summary: "Where content is in review, approval and sending."
+    content: |
+      {{values:marketing_content_status}}. It changes only through the actions.
+  - key: possibleValueSource:marketing_author_type;slot:help
+    summary: "Who wrote a revision."
+    content: |
+      {{values:marketing_author_type}}.
+  - key: possibleValueSource:marketing_approval_status;slot:help
+    summary: "Whether an approval still counts."
+    content: |
+      {{values:marketing_approval_status}}. Only an Active approval allows a send.
+  - key: possibleValueSource:marketing_execution_status;slot:help
+    summary: "Where an execution is in sending."
+    content: |
+      {{values:marketing_execution_status}}.
+  - key: possibleValueSource:marketing_attempt_outcome;slot:help
+    summary: "How one send attempt ended."
+    content: |
+      {{values:marketing_attempt_outcome}}. Ambiguous attempts are never retried automatically.
+  - key: possibleValueSource:marketing_agent_task;slot:help
+    summary: "What an agent run was asked to do."
+    content: |
+      {{values:marketing_agent_task}}.
+  - key: possibleValueSource:marketing_agent_run_status;slot:help
+    summary: "Where an agent run is."
+    content: |
+      {{values:marketing_agent_run_status}}.
+  - key: possibleValueSource:marketing_agent_step_kind;slot:help
+    summary: "The kind of an agent step."
+    content: |
+      {{values:marketing_agent_step_kind}}.
+  - key: possibleValueSource:marketing_finding_type;slot:help
+    summary: "The kind of a finding."
+    content: |
+      {{values:marketing_finding_type}}.
+  - key: possibleValueSource:marketing_finding_severity;slot:help
+    summary: "How serious a finding is."
+    content: |
+      {{values:marketing_finding_severity}}. An open Blocker on a content item stops it being approved.
+  - key: possibleValueSource:marketing_finding_status;slot:help
+    summary: "Whether a finding still needs action."
+    content: |
+      {{values:marketing_finding_status}}.
+  - key: possibleValueSource:marketing_funnel_stage;slot:help
+    summary: "The stage of the funnel that a metric or event belongs to."
+    content: |
+      {{values:marketing_funnel_stage}}. Stages are reported separately and never added together.
+  - key: possibleValueSource:marketing_instrumentation_status;slot:help
+    summary: "How fully a metric can be measured."
+    content: |
+      {{values:marketing_instrumentation_status}}. Not instrumented shows Not measured, not 0.
+  - key: possibleValueSource:marketing_count_mode;slot:help
+    summary: "How a metric counts events."
+    content: |
+      {{values:marketing_count_mode}}.
+  - key: possibleValueSource:marketing_product;slot:help
+    summary: "Offers products to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_product}} record.
+  - key: possibleValueSource:marketing_audience;slot:help
+    summary: "Offers audiences to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_audience}} record. Where a product is already chosen, only its audiences are offered.
+  - key: possibleValueSource:marketing_evidence_source;slot:help
+    summary: "Offers evidence sources to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_evidence_source}} record. Where a product is already chosen, only its sources are offered.
+  - key: possibleValueSource:marketing_claim;slot:help
+    summary: "Offers claims to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_claim}} record. Where a product is already chosen, only its claims are offered.
+  - key: possibleValueSource:marketing_campaign;slot:help
+    summary: "Offers campaigns to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_campaign}} record. Where a product is already chosen, only its campaigns are offered.
+  - key: possibleValueSource:marketing_channel;slot:help
+    summary: "Offers channels to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_channel}} record.
+  - key: possibleValueSource:marketing_content;slot:help
+    summary: "Offers content items to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_content}} record. Where a product is already chosen, only its content is offered.
+  - key: possibleValueSource:marketing_content_revision;slot:help
+    summary: "Offers content revisions to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_content_revision}} record.
+  - key: possibleValueSource:marketing_approval;slot:help
+    summary: "Offers approvals to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_approval}} record.
+  - key: possibleValueSource:marketing_execution;slot:help
+    summary: "Offers executions to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_execution}} record. Where a product is already chosen, only its executions are offered.
+  - key: possibleValueSource:marketing_execution_attempt;slot:help
+    summary: "Offers execution attempts to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_execution_attempt}} record.
+  - key: possibleValueSource:marketing_test_delivery;slot:help
+    summary: "Offers test deliveries to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_test_delivery}} record.
+  - key: possibleValueSource:marketing_agent_run;slot:help
+    summary: "Offers agent runs to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_agent_run}} record. Where a product is already chosen, only its runs are offered.
+  - key: possibleValueSource:marketing_agent_step;slot:help
+    summary: "Offers agent steps to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_agent_step}} record.
+  - key: possibleValueSource:marketing_finding;slot:help
+    summary: "Offers findings to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_finding}} record.
+  - key: possibleValueSource:marketing_metric;slot:help
+    summary: "Offers metrics to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_metric}} record.
+  - key: possibleValueSource:marketing_outcome_event;slot:help
+    summary: "Offers outcome events to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_outcome_event}} record.
+  - key: possibleValueSource:marketing_policy;slot:help
+    summary: "Offers policies to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_policy}} record.
+  - key: table:marketing_metric_daily;slot:help
+    summary: "Daily result totals for a campaign, kept up to date from its outcome events."
+    content: |
+      One row per campaign, UTC day, funnel stage, event type and test-data flag. Marketing rewrites these rows whenever an outcome event is added, changed or deleted, so they are read-only. The campaign Results come from these totals. Rebuild Results recomputes them from the events.
+  - key: table:marketing_metric_daily;field:campaignId
+    summary: "The campaign these totals belong to."
+    content: |
+      Set by Marketing from the outcome events.
+  - key: table:marketing_metric_daily;field:productId
+    summary: "The campaign's product, used for product-level access."
+    content: |
+      Copied from the campaign so the product record lock applies to these rows.
+  - key: table:marketing_metric_daily;field:dayUtc
+    summary: "The day the events happened, in UTC."
+    content: |
+      Events are grouped by the UTC date of their Occurred At time.
+  - key: table:marketing_metric_daily;field:funnelStage
+    summary: "The funnel stage of the events counted in this row."
+    content: |
+      One of: {{values:marketing_funnel_stage}}. Stages are reported separately and never added together.
+  - key: table:marketing_metric_daily;field:eventType
+    summary: "The event type counted in this row."
+    content: |
+      The same event type as on the outcome events, for example provider_accepted.
+  - key: table:marketing_metric_daily;field:isTestData
+    summary: "Whether this row counts test events, which the Results leave out."
+    content: |
+      Test events are kept in their own rows so they never mix with real results.
+  - key: table:marketing_metric_daily;field:rawCount
+    summary: "The sum of the events' quantities that day."
+    content: |
+      Raw events, not people. One person can be counted many times.
+  - key: table:marketing_metric_daily;field:uniqueActors
+    summary: "How many different actors had events that day."
+    content: |
+      Counted by actor key for this day only. Daily numbers cannot be added up into a campaign total, so the Results count unique actors across the whole campaign separately.
+  - key: table:marketing_metric_daily;field:eventsWithoutActor
+    summary: "Events that day with no actor key, so they are not in the unique count."
+    content: |
+      The Results note these, because unique actors are a lower bound when some events have no actor.
+  - key: table:marketing_metric_daily;field:recomputedAt
+    summary: "When Marketing last recalculated this row."
+    content: |
+      Updated only when the numbers change.
+  - key: widget:marketing_campaign_join_marketing_metric_daily;slot:label
+    summary: "Daily totals of this campaign's outcome events."
+    content: |
+      Read-only. Use Rebuild Results if they ever look out of step with the events.
+  - key: possibleValueSource:marketing_metric_daily;slot:help
+    summary: "Offers daily result rows to choose from."
+    content: |
+      Used by fields that point to a {{label:marketing_metric_daily}} record.
+  - key: process:marketing_rebuild_results;slot:help
+    summary: "Recomputes the daily result totals of the selected campaigns from their outcome events."
+    content: |
+      Safe to run any time: it rewrites only rows whose numbers differ and deletes days with no events left. Needs the same permission as Update Results from CRM.
+  - key: process:marketing_import_outcomes;slot:help
+    summary: "Fetches new outcome events for the selected campaigns from every registered importer."
+    content: |
+      Each importer adds events with its own name as the source, and a repeat of the same external id is skipped. An importer that fails is named in the result and does not stop the others. With no importers registered, nothing is imported.
