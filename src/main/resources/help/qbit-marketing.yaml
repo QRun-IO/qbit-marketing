@@ -1,5 +1,5 @@
 bundle: qbit-marketing
-version: 0.1.0
+version: 1
 layer: QBIT
 entries:
   - key: app:marketing;slot:help
@@ -10,74 +10,110 @@ entries:
     summary: "A product you market, with its facts, links and how ready it is for marketing."
     content: |
       The product brief: maturity, tagline, summary, value propositions, license, platforms, latest release, adoption path, official links and the date its facts were last verified. Evidence sources, claims, audiences and campaigns are listed on the product. Check Readiness reviews its evidence, claims, sources and audiences.
+
+      **How rows get created:** add one with New, or run the table action **Load Verified Starter Data** (QQQ, gclo and MarkdownViewr for Windows, each with its sources, claims, audiences, draft campaigns and measurement plan). Loading is idempotent: a product that already exists (by slug) is left alone.
   - key: table:marketing_campaign;slot:help
     summary: "A planned push for one product, with its goal, audience, message and how success is measured."
     content: |
       Holds the goal, status, audience, objective, messaging, call to action, destination, UTM campaign, schedule, owner, success criteria and lead rule. Content, the measurement plan, findings, agent runs and outcome events are listed on the campaign. The agent actions and Update Results from CRM run from here.
+
+      **How rows get created:** add one with New on a product, or run **Load Verified Starter Data** on Marketing Product, which adds a draft campaign for each starter product. Agent actions on a campaign plan it but never create a campaign.
   - key: table:marketing_content;slot:help
     summary: "A proposed publication: the exact text, destination, recipients, schedule and channel that a person approves."
     content: |
       Its status is one of: {{values:marketing_content_status}}. Status changes only through actions such as Submit for Review, Approve and Schedule. Every change to an approved field adds a revision, and an edit after approval voids the approval and returns the content to Draft. The Proposed Publication section shows exactly what a reviewer approves.
+
+      **How rows get created:** add one with New on a campaign, or run **Draft with Agent** on a campaign, which creates Draft content that a person must review. Starter data does not create content. Status changes only through the actions.
   - key: table:marketing_execution;slot:help
     summary: "One approved item scheduled to be sent, with its status, attempts and result."
     content: |
       Schedule creates one execution per approval. It is written only by Marketing's services and is read-only. Act on it with Run Now, Pause, Resume, Cancel, Reconcile with Provider, Mark as Accepted or Mark Not Sent and Retry. Read its Status Detail when it is Blocked or needs reconciliation.
+
+      **How rows get created:** created by the **Schedule** action on approved content, one per approval. Nobody adds one by hand. Empty means nothing has been scheduled.
   - key: table:marketing_agent_run;slot:help
     summary: "One run of the marketing agent: what it was asked, what it did and what it cost."
     content: |
       Runs start from the agent actions on a campaign and are read-only. Each run lists every step, including what the model saw, and the drafts and findings it created. The agent only prepares work. It never approves, schedules or sends anything.
+
+      **How rows get created:** started by **Plan with Agent**, **Draft with Agent**, **Check Claims with Agent** or **Analyze Results with Agent** on a campaign or product. Empty means the agent has not been asked anything yet.
   - key: table:marketing_channel;slot:help
     summary: "A place content can go, with its transport, AI-content rule, automation setting and limits."
     content: |
       A channel records its type, transport, whether it is active and allowed to automate, whether AI-written text is allowed, its own rules with the date they were checked, and its sending limits. It is a settings table: it needs marketing.admin.read to view and marketing.admin.write to change.
+
+      **How rows get created:** run **Load Verified Starter Data** on Marketing Product once: it adds the controlled test sink, email to the opted-in CRM list, the project blog and GitHub release notes, with their rules and the date they were checked. Or add one with New (needs marketing.admin.write). Record the rules, their source URL and the date every time you re-read them; Check Readiness warns when that date is older than the stale-channel-rules limit (90 days unless the host changes it).
   - key: table:marketing_policy;slot:help
     summary: "The single default row of switches and limits that govern the agent and sending."
     content: |
       Holds the kill switches for the agent and for execution, provider and model overrides, the daily token and monthly cost budgets, and the concurrency and tool limits. If the row is missing, or a switch is not explicitly on, the agent and execution are off. It needs marketing.admin.read to view and marketing.admin.write to change.
+
+      **How rows get created:** **Load Verified Starter Data** adds the `default` row (agent and execution on, 1,000,000 agent tokens per day, USD 25 per month, 2 concurrent runs, 24 tool calls per run). Without it the agent and execution stay off. Or add the row `default` with New. Only that row is used.
   - key: table:marketing_audience;slot:help
     summary: "A group of people a product is for, with the problem it solves for them."
     content: |
       Describes who the product helps: their problem, the task they want to get done, and the evidence for it. A campaign can target one audience. Check Readiness flags a product that has none.
+
+      **How rows get created:** add one with New on a product, or run **Load Verified Starter Data** on Marketing Product, which adds the starter audiences.
   - key: table:marketing_evidence_source;slot:help
     summary: "A source, such as a web page or repository, that product claims are checked against."
     content: |
       Records the source type, publisher, URL, an excerpt, who verified it and when. Check Readiness flags a source older than the stale-source limit (90 days unless the host changes it). Claims cite a source.
+
+      **How rows get created:** add one with New on a product, or run **Load Verified Starter Data** on Marketing Product, which adds each starter product's sources verified on the date in the file.
   - key: table:marketing_claim;slot:help
     summary: "A factual statement about a product, with its source, status and evidence."
     content: |
       Its status ({{values:marketing_claim_status}}) says whether it can be stated as fact. Check Readiness flags claims that are unverified, unsourced or disputed, and an agent draft that cites a claim that is not Released raises a Blocker finding.
+
+      **How rows get created:** add one with New on a product, or run **Load Verified Starter Data** on Marketing Product, which adds the verified claims (disputed ones are marked Disputed with the discrepancy written out).
   - key: table:marketing_content_revision;slot:help
     summary: "An unchangeable snapshot of a content item as it stood at one revision."
     content: |
       A revision is added on every insert and on every change to the approved fields: title, body, destination, call to action, recipient scope, schedule and channel. Revisions are never edited, so the history shows exactly what was proposed and who or what wrote it.
+
+      **How rows get created:** automatically, whenever content is created or an approved field changes. Nobody adds or edits one. Empty means no content exists yet.
   - key: table:marketing_approval;slot:help
     summary: "A person's approval of one exact revision of content, bound to its content hash."
     content: |
       It stores the hash, revision, destination, recipient scope and schedule that were approved. Its status is one of: {{values:marketing_approval_status}}. A change to the content that alters the hash invalidates the active approval and records why. It is read-only.
+
+      **How rows get created:** created by the **Approve** action on content that is in review. Read-only. Empty means nothing has been approved yet.
   - key: table:marketing_execution_attempt;slot:help
     summary: "One try at sending an execution, with its outcome and the provider's receipt."
     content: |
       Each attempt records its outcome, the worker, timing, recipient count and the provider's receipt. A failure that certainly sent nothing is retried with growing delays until the execution runs out of attempts. It is read-only.
+
+      **How rows get created:** written automatically each time an execution is tried (Run Now, or the due-executions job when a scheduler is configured). Empty means nothing has been sent or tried.
   - key: table:marketing_test_delivery;slot:help
     summary: "What the test transport accepted for an execution, stored here instead of being sent."
     content: |
       The controlled test transport stores each payload per recipient and sends nothing outside the application. A repeated idempotency key is counted as a duplicate rather than stored again. Executions that use it are flagged as test data and left out of results. It is read-only.
+
+      **How rows get created:** written automatically by the controlled test transport when an execution on the test channel runs. Empty means nothing has run on the test channel.
   - key: table:marketing_agent_step;slot:help
     summary: "One step of an agent run: a model call, a tool call or a deterministic check."
     content: |
       A step is one of: {{values:marketing_agent_step_kind}}. Tool steps keep the input and the result exactly as the model saw it, with secrets redacted. It is read-only.
+
+      **How rows get created:** written automatically for every model call, tool call and check inside an agent run. Empty means the agent has not run.
   - key: table:marketing_finding;slot:help
     summary: "A problem, gap or recommendation about a product, campaign or content, with a severity."
     content: |
       Findings come from Check Readiness, the agent or a person. An open Blocker finding on a content item stops it being approved. Mark Resolved and Dismiss close an open finding, and closing or downgrading a Blocker needs approval authority.
+
+      **How rows get created:** created by **Check Readiness** on a product or campaign, by the agent actions, or by a person with New. Mark Resolved and Dismiss close them. Empty means no check has run yet, or nothing was found.
   - key: table:marketing_metric;slot:help
     summary: "A measurement planned for a campaign: its stage, event type and how it is counted."
     content: |
       The measurement plan. Each metric names a funnel stage and an event type, counts raw events or unique actors, and says how fully it is instrumented. A metric that is not instrumented shows Not measured, never 0, and a partly instrumented one is a lower bound.
+
+      **How rows get created:** add one with New on a campaign (its measurement plan), or run **Load Verified Starter Data** on Marketing Product, which adds the plan of each starter campaign.
   - key: table:marketing_outcome_event;slot:help
     summary: "One recorded result event for a campaign, unique by its source and external id."
     content: |
       Events come from importers, the API, Update Results from CRM or are entered by hand. Source plus External Event Id is unique, so a replay is dropped. Events flagged as test data are left out of the numbers.
+
+      **How rows get created:** imported by an outcome importer, posted through the API, added by **Update Results from CRM** on a campaign, or entered by hand. Empty means no results have been recorded yet, so results show as not measured, never zero.
   - key: table:marketing_product;field:name
     summary: "The product's display name."
     content: |
@@ -337,7 +373,7 @@ entries:
   - key: table:marketing_channel;field:rulesVerifiedDate
     summary: "When someone last read the channel's rules."
     content: |
-      Check Readiness warns about content whose channel has no verification date, or whose AI-content rule is Unknown. Record the date every time the rules are re-read.
+      Check Readiness warns about content whose channel has no verification date, or whose AI-content rule is Unknown, and again when the date is older than the stale-channel-rules limit (90 days unless the host changes it). Record the date every time the rules are re-read.
   - key: table:marketing_channel;field:channelType
     summary: "What kind of channel it is."
     content: |
@@ -357,7 +393,7 @@ entries:
   - key: table:marketing_channel;field:rulesSourceUrl
     summary: "Where the channel's rules are published."
     content: |
-      Link to the page you read when you recorded the rules.
+      Link to the page you read when you recorded the rules. Check Readiness quotes it in its warning when the rules are unverified or out of date, so the reader knows what to re-read, and the agent can see it.
   - key: table:marketing_channel;field:rulesSummary
     summary: "A summary of the channel's rules."
     content: |
@@ -1394,6 +1430,8 @@ entries:
     summary: "Daily result totals for a campaign, kept up to date from its outcome events."
     content: |
       One row per campaign, UTC day, funnel stage, event type and test-data flag. Marketing rewrites these rows whenever an outcome event is added, changed or deleted, so they are read-only. The campaign Results come from these totals. Rebuild Results recomputes them from the events.
+
+      **How rows get created:** maintained automatically from the outcome events, and recomputed by **Rebuild Results**. Nobody edits it. Empty means there are no outcome events yet.
   - key: table:marketing_metric_daily;field:campaignId
     summary: "The campaign these totals belong to."
     content: |

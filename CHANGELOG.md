@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows Keep
 
 ## [0.1.0] - Unreleased
 
+### Added
+- Check Readiness warns when a channel's `rulesVerifiedDate` is older than the new `staleChannelRulesDays` (default 90), on a campaign whose content uses the channel, like `staleSourceDays` does for evidence sources. The warning, and the "rules not verified" one, now quote the channel's `rulesSourceUrl`. The agent's campaign view also shows the lead qualification note.
+- The help bundle is now applied to the app and tables at run time (`MarketingHelp`, a stand-in for the core registry), so it shows when a table is empty. Every table says "How rows get created" and names **Load Verified Starter Data** where it seeds the table. The bundle version is `1`.
+- `MarketingTablesGuardrailTest` and `ChannelRulesStalenessTest`.
+
 ### Changed
 - `QbitCrmGateway` uses qbit-crm 0.2.0's `crm_*` snake_case table names (`crm_contact`, ...). qbit-crm 0.1.0's camelCase tables are no longer supported.
 - Make the agent limits distributed (#4): `maxConcurrentAgentRuns` counts Running `marketing_agent_run` rows in the database (a new `heartbeatAt` column, updated on each model call, lets runs whose server stopped be marked Failed first), and `maxModelCallsPerMinute` counts model-call steps in the last 60 seconds and makes a run wait rather than fail. The in-memory semaphore and rate window are gone; the settings and Marketing Policy override keep their names and defaults (the policy `maxConcurrentAgentRuns` override now applies). Hosts add `heartbeat_at` to `marketing_agent_run`. The count-then-insert window is still racy; a conditional-update claim (qqq#1178) is a follow-up.
