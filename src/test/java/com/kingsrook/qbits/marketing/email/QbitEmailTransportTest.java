@@ -21,9 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 import com.kingsrook.qbits.email.EmailQBitConfig;
 import com.kingsrook.qbits.email.EmailQBitProducer;
-import com.kingsrook.qbits.email.metadata.EmailTables;
-import com.kingsrook.qbits.email.permissions.EmailPermissions;
-import com.kingsrook.qbits.email.support.SystemWrites;
+import com.kingsrook.qbits.email.api.EmailApi;
+import com.kingsrook.qbits.email.api.EmailApiCategory;
+import com.kingsrook.qbits.email.api.EmailApiMessage;
 import com.kingsrook.qbits.marketing.MarketingQBitConfig;
 import com.kingsrook.qbits.marketing.MarketingQBitProducer;
 import com.kingsrook.qbits.marketing.MarketingRuntime;
@@ -34,10 +34,13 @@ import com.kingsrook.qbits.marketing.transport.MarketingTransport.Recipient;
 import com.kingsrook.qbits.marketing.transport.MarketingTransport.TransportRequest;
 import com.kingsrook.qbits.marketing.transport.MarketingTransport.TransportResult;
 import com.kingsrook.qbits.marketing.transport.QqqMessagingEmailTransport;
+import com.kingsrook.qqq.backend.core.actions.tables.InsertAction;
+import com.kingsrook.qqq.backend.core.actions.tables.QueryAction;
 import com.kingsrook.qqq.backend.core.context.QContext;
 import com.kingsrook.qqq.backend.core.exceptions.QException;
 import com.kingsrook.qqq.backend.core.instances.QInstanceValidator;
-import com.kingsrook.qqq.backend.core.model.actions.tables.query.QQueryFilter;
+import com.kingsrook.qqq.backend.core.model.actions.tables.insert.InsertInput;
+import com.kingsrook.qqq.backend.core.model.actions.tables.query.QueryInput;
 import com.kingsrook.qqq.backend.core.model.data.QRecord;
 import com.kingsrook.qqq.backend.core.model.metadata.QAuthenticationType;
 import com.kingsrook.qqq.backend.core.model.metadata.QBackendMetaData;
@@ -90,7 +93,7 @@ class QbitEmailTransportTest
       new QInstanceValidator().validate(qInstance);
 
       List<String> permissions = new ArrayList<>(MarketingPermissions.ALL);
-      permissions.addAll(EmailPermissions.ALL);
+      permissions.addAll(List.of("email.view", "email.send", "email.manage", "email.admin", "email.hasAccess"));
       QContext.init(qInstance, new QSession().withPermissions(permissions));
       return (qInstance);
    }
@@ -103,7 +106,7 @@ class QbitEmailTransportTest
    private void provider() throws QException
    {
       brand();
-      SystemWrites.insertOne(EmailTables.PROVIDER, new QRecord().withValue("name", "relay").withValue("label", "Relay").withValue("kind", "SMTP").withValue("host", "127.0.0.1")
+      insert("email_provider", new QRecord().withValue("name", "relay").withValue("label", "Relay").withValue("kind", "SMTP").withValue("host", "127.0.0.1")
          .withValue("port", 2525).withValue("security", "NONE").withValue("fromAddress", "sender@example.com").withValue("enabled", true).withValue("isDefault", true));
    }
 
@@ -114,8 +117,19 @@ class QbitEmailTransportTest
     *******************************************************************************/
    private void brand() throws QException
    {
-      SystemWrites.insertOne(EmailTables.BRAND, new QRecord().withValue("name", "default").withValue("label", "Example").withValue("isDefault", true)
+      insert("email_brand", new QRecord().withValue("name", "default").withValue("label", "Example").withValue("isDefault", true)
          .withValue("postalAddress", "1 Main St, Springfield"));
+   }
+
+
+
+   /*******************************************************************************
+    ** Configure the email qbit's editable tables through ordinary QQQ actions.
+    *******************************************************************************/
+   private void insert(String table, QRecord record) throws QException
+   {
+      var output = new InsertAction().execute(new InsertInput(table).withRecords(List.of(record)));
+      assertThat(output.getRecords()).hasSize(1).allSatisfy(row -> assertThat(row.getErrors()).isNullOrEmpty());
    }
 
 
@@ -151,22 +165,32 @@ class QbitEmailTransportTest
       assertThat(result.outcome()).as(result.message()).isEqualTo(TransportResult.Outcome.ACCEPTED);
       assertThat(result.providerStatus()).isEqualTo("queued");
 
-      List<QRecord> rows = SystemWrites.query(EmailTables.MESSAGE, new QQueryFilter());
+      List<EmailApiMessage> rows = EmailApi.findMessagesByIdempotencyKeyPrefix("marketing:3:4:", 10);
       assertThat(rows).hasSize(2);
-      assertThat(rows).extracting(r -> r.getValueString("idempotencyKey")).containsExactlyInAnyOrder("marketing:3:4:crm-contact:1", "marketing:3:4:crm-contact:2");
+      assertThat(rows).extracting(EmailApiMessage::idempotencyKey).containsExactlyInAnyOrder("marketing:3:4:crm-contact:1", "marketing:3:4:crm-contact:2");
       assertThat(rows).allSatisfy(r ->
       {
-         assertThat(r.getValueString("category")).isEqualTo("MARKETING");
+         assertThat(r.category()).isEqualTo(EmailApiCategory.MARKETING);
+         assertThat(r.linkedTableName()).isEqualTo("marketing_execution");
+         assertThat(r.linkedRecordId()).isEqualTo("7");
+         assertThat(r.templateName()).isNull();
+         assertThat(r.status()).isEqualTo("QUEUED");
+      });
+
+      // The public API intentionally omits content; inspect it as an email admin.
+      List<QRecord> messages = new QueryAction().execute(new QueryInput("email_message")
+         .withShouldFetchHeavyFields(true).withShouldOmitHiddenFields(false)).getRecords();
+      assertThat(messages).hasSize(2).allSatisfy(r ->
+      {
          assertThat(r.getValueString("subject")).isEqualTo("Big news");
-         assertThat(r.getValueString("linkedTableName")).isEqualTo("marketing_execution");
-         assertThat(r.getValueString("linkedRecordId")).isEqualTo("7");
          assertThat(r.getValueString("senderQbit")).isEqualTo("marketing");
+         assertThat(r.getValueString("senderProcess")).isEqualTo("execution");
          assertThat(r.getValueString("htmlBody")).contains("https://example.org/try").contains("nsubscribe");
          assertThat(r.getValueString("toAddresses")).doesNotContain(",");
       });
 
       assertThat(transport.send(request).outcome()).isEqualTo(TransportResult.Outcome.DUPLICATE);
-      assertThat(SystemWrites.query(EmailTables.MESSAGE, new QQueryFilter())).hasSize(2);
+      assertThat(EmailApi.findMessagesByIdempotencyKeyPrefix("marketing:3:4:", 10)).hasSize(2);
 
       assertThat(transport.lookup("marketing-execution:3:4").state()).isEqualTo(MarketingTransport.TransportLookup.State.FOUND_ACCEPTED);
       assertThat(transport.lookup("marketing-execution:9:9").state()).isEqualTo(MarketingTransport.TransportLookup.State.NOT_FOUND);
@@ -183,7 +207,7 @@ class QbitEmailTransportTest
    {
       instance(true, "https://app.example.org", "k", new MarketingQBitConfig());
       provider();
-      SystemWrites.insertOne(EmailTables.SUPPRESSION, new QRecord().withValue("address", "gone@example.org").withValue("reason", "UNSUBSCRIBED").withValue("scope", "MARKETING"));
+      insert("email_suppression", new QRecord().withValue("address", "gone@example.org").withValue("reason", "UNSUBSCRIBED").withValue("scope", "MARKETING"));
 
       MarketingTransport transport = new QbitEmailTransport();
       TransportResult    result    = transport.send(request("marketing-execution:1:1", new Recipient("crm-contact:9", "gone@example.org")));
@@ -216,6 +240,7 @@ class QbitEmailTransportTest
       assertThat(new QbitEmailTransport().getStatus().detail()).contains("publicBaseUrl");
 
       instance(true, "https://app.example.org", "k", new MarketingQBitConfig());
+      assertThat(transport.getStatus().state()).isEqualTo(MarketingTransport.TransportStatus.State.OPERATIONAL);
       TransportResult refused = new QbitEmailTransport().send(request("marketing-execution:5:5", new Recipient("a", "a@example.org")));
       assertThat(refused.outcome()).isEqualTo(TransportResult.Outcome.REJECTED);
       assertThat(refused.message()).contains("refused the message");
@@ -223,6 +248,25 @@ class QbitEmailTransportTest
       provider();
       TransportResult noAddress = new QbitEmailTransport().send(request("marketing-execution:6:6", new Recipient("a", null)));
       assertThat(noAddress.outcome()).isEqualTo(TransportResult.Outcome.REJECTED);
+   }
+
+
+
+   /*******************************************************************************
+    ** A missing postal address is a send-time refusal, not NOT_CONFIGURED.
+    *******************************************************************************/
+   @Test
+   void testMissingBrandIsRefusedAtSend() throws Exception
+   {
+      instance(true, "https://app.example.org", "k", new MarketingQBitConfig());
+      insert("email_provider", new QRecord().withValue("name", "relay").withValue("label", "Relay").withValue("kind", "SMTP").withValue("host", "127.0.0.1")
+         .withValue("port", 2525).withValue("security", "NONE").withValue("fromAddress", "sender@example.com").withValue("enabled", true).withValue("isDefault", true));
+
+      QbitEmailTransport transport = new QbitEmailTransport();
+      assertThat(transport.getStatus().state()).isEqualTo(MarketingTransport.TransportStatus.State.OPERATIONAL);
+      TransportResult result = transport.send(request("marketing-execution:8:8", new Recipient("a", "a@example.org")));
+      assertThat(result.outcome()).isEqualTo(TransportResult.Outcome.REJECTED);
+      assertThat(result.message()).contains("postal address");
    }
 
 

@@ -20,23 +20,19 @@ package com.kingsrook.qbits.marketing.email;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import com.kingsrook.qbits.email.EmailQBitConfig;
-import com.kingsrook.qbits.email.EmailRuntime;
-import com.kingsrook.qbits.email.metadata.EmailTables;
-import com.kingsrook.qbits.email.outbox.EmailCategory;
-import com.kingsrook.qbits.email.outbox.EmailRequest;
-import com.kingsrook.qbits.email.outbox.EmailSendResult;
-import com.kingsrook.qbits.email.outbox.EmailService;
-import com.kingsrook.qbits.email.support.SystemWrites;
+import com.kingsrook.qbits.email.api.EmailApi;
+import com.kingsrook.qbits.email.api.EmailApiCategory;
+import com.kingsrook.qbits.email.api.EmailApiMessage;
+import com.kingsrook.qbits.email.api.EmailApiReadiness;
+import com.kingsrook.qbits.email.api.EmailApiReadinessCheck;
+import com.kingsrook.qbits.email.api.EmailApiRequest;
+import com.kingsrook.qbits.email.api.EmailApiResult;
 import com.kingsrook.qbits.marketing.model.MarketingExecution;
 import com.kingsrook.qbits.marketing.model.enums.ChannelType;
 import com.kingsrook.qbits.marketing.transport.MarketingTransport;
 import com.kingsrook.qqq.backend.core.context.QContext;
+import com.kingsrook.qqq.backend.core.exceptions.QException;
 import com.kingsrook.qqq.backend.core.logging.QLogger;
-import com.kingsrook.qqq.backend.core.model.actions.tables.query.QCriteriaOperator;
-import com.kingsrook.qqq.backend.core.model.actions.tables.query.QFilterCriteria;
-import com.kingsrook.qqq.backend.core.model.actions.tables.query.QQueryFilter;
-import com.kingsrook.qqq.backend.core.model.data.QRecord;
 import com.kingsrook.qqq.backend.core.model.metadata.QInstance;
 import com.kingsrook.qqq.backend.core.utils.StringUtils;
 import static com.kingsrook.qqq.backend.core.logging.LogUtils.logPair;
@@ -88,8 +84,8 @@ public class QbitEmailTransport implements MarketingTransport
    {
       try
       {
-         Class.forName("com.kingsrook.qbits.email.outbox.EmailService");
-         return (EmailRuntime.config(qInstance) != null);
+         Class.forName("com.kingsrook.qbits.email.api.EmailApi");
+         return (EmailApi.isInstalled(qInstance));
       }
       catch(ClassNotFoundException | LinkageError e)
       {
@@ -119,28 +115,30 @@ public class QbitEmailTransport implements MarketingTransport
    @Override
    public TransportStatus getStatus()
    {
-      EmailQBitConfig emailConfig = isInstalled(QContext.getQInstance()) ? EmailRuntime.config() : null;
-      if(emailConfig == null)
+      if(!isInstalled(QContext.getQInstance()))
       {
          return (new TransportStatus(TransportStatus.State.NOT_CONFIGURED, "The email qbit (qbit-email) is not installed in this application."));
       }
-      if(!StringUtils.hasContent(emailConfig.getPublicBaseUrl()))
-      {
-         return (new TransportStatus(TransportStatus.State.NOT_CONFIGURED, "Marketing email needs the email qbit's publicBaseUrl (the unsubscribe link base)."));
-      }
-
-      String key = null;
       try
       {
-         key = emailConfig.getSecretResolver().apply(UNSUBSCRIBE_KEY_NAME);
+         EmailApiReadiness readiness = EmailApi.readiness(QContext.getQInstance(), EmailApiCategory.MARKETING);
+         if(readiness.failed(EmailApiReadinessCheck.NOT_INSTALLED))
+         {
+            return (new TransportStatus(TransportStatus.State.NOT_CONFIGURED, "The email qbit (qbit-email) is not installed in this application."));
+         }
+         if(readiness.failed(EmailApiReadinessCheck.PUBLIC_BASE_URL))
+         {
+            return (new TransportStatus(TransportStatus.State.NOT_CONFIGURED, "Marketing email needs the email qbit's publicBaseUrl (the unsubscribe link base)."));
+         }
+         if(readiness.failed(EmailApiReadinessCheck.UNSUBSCRIBE_KEY))
+         {
+            return (new TransportStatus(TransportStatus.State.NOT_CONFIGURED, "Marketing email needs the " + UNSUBSCRIBE_KEY_NAME + " secret (it signs the unsubscribe links)."));
+         }
       }
-      catch(Exception e)
+      catch(QException e)
       {
-         LOG.warn("Could not resolve the unsubscribe key", logPair("error", e.getClass().getSimpleName()));
-      }
-      if(!StringUtils.hasContent(key))
-      {
-         return (new TransportStatus(TransportStatus.State.NOT_CONFIGURED, "Marketing email needs the " + UNSUBSCRIBE_KEY_NAME + " secret (it signs the unsubscribe links)."));
+         LOG.warn("Could not check email qbit readiness", logPair("error", e.getClass().getSimpleName()));
+         return (new TransportStatus(TransportStatus.State.CONFIGURED, "Could not check the email qbit's configuration; retry when its configuration can be read."));
       }
       return (new TransportStatus(TransportStatus.State.OPERATIONAL, "Queues through the email qbit's outbox with its unsubscribe link and suppression list."));
    }
@@ -183,7 +181,7 @@ public class QbitEmailTransport implements MarketingTransport
 
          try
          {
-            EmailSendResult result = EmailService.send(emailRequest(request, recipient));
+            EmailApiResult result = EmailApi.send(emailRequest(request, recipient));
             switch(result.status())
             {
                case QUEUED -> queued++;
@@ -227,8 +225,8 @@ public class QbitEmailTransport implements MarketingTransport
    {
       try
       {
-         String        prefix = "marketing:" + stripPrefix(idempotencyKey) + ":";
-         List<QRecord> rows   = SystemWrites.query(EmailTables.MESSAGE, new QQueryFilter(new QFilterCriteria("idempotencyKey", QCriteriaOperator.STARTS_WITH, prefix)).withLimit(1));
+         String                prefix = "marketing:" + stripPrefix(idempotencyKey) + ":";
+         List<EmailApiMessage> rows   = EmailApi.findMessagesByIdempotencyKeyPrefix(prefix, 1);
          if(rows.isEmpty())
          {
             return (new TransportLookup(TransportLookup.State.NOT_FOUND, null));
@@ -247,7 +245,7 @@ public class QbitEmailTransport implements MarketingTransport
    /*******************************************************************************
     ** One MARKETING message to one recipient.
     *******************************************************************************/
-   private EmailRequest emailRequest(TransportRequest request, Recipient recipient)
+   private EmailApiRequest emailRequest(TransportRequest request, Recipient recipient)
    {
       String body = request.body() == null ? "" : request.body();
       if(StringUtils.hasContent(request.destinationUrl()) && request.destinationUrl().matches("(?i)https?://\\S+"))
@@ -256,11 +254,11 @@ public class QbitEmailTransport implements MarketingTransport
          body = body + "\n\n[" + label + "](" + request.destinationUrl() + ")";
       }
 
-      return (new EmailRequest()
+      return (new EmailApiRequest()
          .withTo(recipient.address())
          .withSubject(request.title() == null ? "" : request.title().replaceAll("[\\r\\n]+", " ").trim())
          .withMarkdownBody(body)
-         .withCategory(EmailCategory.MARKETING)
+         .withCategory(EmailApiCategory.MARKETING)
          .withIdempotencyKey(baseKey(request) + ":" + recipient.key())
          .withLinkedRecord(MarketingExecution.TABLE_NAME, request.executionId())
          .withSender("marketing", "execution"));

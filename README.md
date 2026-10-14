@@ -6,7 +6,7 @@
 > Marketing for QQQ applications: products and their verified evidence, campaigns, content with revision history, exact human approval, controlled execution, honest measurement, and a marketing agent that prepares work but never publishes.
 
 **Status:** 0.1.0, not yet published.
-- Built against QQQ `4.1.0-RC.6` with `qbit-build-parent` `2.1.0`.
+- Built against QQQ `4.1.0-RC.6` with `qbit-build-parent` `2.1.1`.
 - Hosted in QRun-IO/Voyage next to qbit-crm, on a local branch.
 - The real integrations are implemented but unconfigured. See [what is configured](#what-is-implemented-what-is-not-configured).
 
@@ -107,7 +107,7 @@ When the optional [qbit-email](https://github.com/QRun-IO/qbit-email) qbit is pr
 - Idempotency key `marketing:<content id>:<approval id>:<recipient key>`; the linked record is the `marketing_execution` row. A repeat is a duplicate, never a second send.
 - Accepted means queued in the qbit-email outbox. A suppressed recipient is skipped, not failed (the result says how many); a refusal by qbit-email is a rejected execution with its reason.
 - Needs qbit-email's `publicBaseUrl`, the `QQQ_EMAIL_UNSUBSCRIBE_KEY` secret, an enabled default provider and a default brand with a postal address. Without the first two the transport reports *Not configured* and says which is missing.
-- qbit-email is an optional dependency (`qbit-email.version`, a SNAPSHOT until its first RC) and needs QQQ `4.1.0-RC.5`.
+- qbit-email is an optional dependency pinned to `0.1.0-RC.3` from Maven Central (`qbit-email.version`). The integration uses only its published `com.kingsrook.qbits.email.api` package for installation checks, readiness, sends and lookups, with the parent's default guardrail allow-lists.
 
 ## What is implemented, what is not configured
 

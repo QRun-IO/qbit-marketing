@@ -168,7 +168,7 @@ public class MarketingRuntime implements QSupplementalInstanceMetaData
    {
       try
       {
-         Class.forName("com.kingsrook.qbits.email.outbox.EmailService");
+         Class.forName("com.kingsrook.qbits.email.api.EmailApi");
          return (true);
       }
       catch(ClassNotFoundException | LinkageError e)
