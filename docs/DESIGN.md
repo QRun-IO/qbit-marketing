@@ -130,7 +130,7 @@ Most rows carry a denormalized `productId`, so the optional product security loc
 - `listFormSubmissions(utmCampaign)`: ids and times only
 - `recordActivity`
 
-`QbitCrmGateway` implements it over qbit-crm 0.1.0 by table name, through the standard actions, so there is no compile dependency on the CRM:
+`QbitCrmGateway` implements it over qbit-crm 0.2.0's `crm_*` tables (`crm_contact`, `crm_consent_record`, ...) by table name, through the standard actions, so there is no compile dependency on the CRM. It moves to qbit-crm's public `com.kingsrook.qbits.crm.api.CrmMarketingApi` once that is released:
 - **Email consent:** the most recent Email consent record decides (Granted and not expired). No record means no consent.
 - **Suppression:** `doNotEmail`, an unsubscribe date, or a list membership that isn't Subscribed.
 

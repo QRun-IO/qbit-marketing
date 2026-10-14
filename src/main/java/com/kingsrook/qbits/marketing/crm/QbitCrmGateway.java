@@ -40,21 +40,25 @@ import com.kingsrook.qqq.backend.core.utils.ValueUtils;
  ** compile dependency on the CRM and CRM permissions and locks apply.
  **
  ** Rules it applies (from qbit-crm's own model):
- ** - Email consent: the contact's most recent crmConsentRecord of type Email
+ ** - Email consent: the contact's most recent crm_consent_record of type Email
  **   decides (Granted, and not past its expiry date). No record means no
  **   consent: Marketing does not send unsolicited email.
  ** - Suppression: doNotEmail, an unsubscribeDate, or a list membership that
  **   is not Subscribed.
  ** - Activities are logged as qbit-crm "Note" activities.
+ **
+ ** It uses qbit-crm 0.2.0's crm_* snake_case tables (no fallback to the
+ ** 0.1.0 camelCase names).
  *******************************************************************************/
 public class QbitCrmGateway implements MarketingCrmGateway
 {
-   public static final String CONTACT_TABLE         = "crmContact";
-   public static final String CONSENT_TABLE         = "crmConsentRecord";
-   public static final String LIST_MEMBER_TABLE     = "crmEmailListMember";
-   public static final String FORM_SUBMISSION_TABLE = "crmFormSubmission";
-   public static final String ACTIVITY_TABLE        = "crmActivity";
-   public static final String ACTIVITY_TYPE_TABLE   = "crmActivityType";
+   public static final String CONTACT_TABLE         = "crm_contact";
+   public static final String CONSENT_TABLE         = "crm_consent_record";
+   public static final String LIST_MEMBER_TABLE     = "crm_email_list_member";
+   public static final String FORM_SUBMISSION_TABLE = "crm_form_submission";
+   public static final String ACTIVITY_TABLE        = "crm_activity";
+   public static final String ACTIVITY_TYPE_TABLE   = "crm_activity_type";
+
 
    static final Integer CONSENT_TYPE_EMAIL       = 1;
    static final Integer CONSENT_STATUS_GRANTED   = 1;
