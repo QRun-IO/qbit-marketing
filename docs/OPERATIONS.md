@@ -49,7 +49,8 @@ Nothing in Marketing stores a credential, and every key is read from the host's 
 |---|---|
 | Claude | `ANTHROPIC_API_KEY` (or `AnthropicModelProvider.builder().apiKey(fromSecretStore)`), and a model id such as `claude-sonnet-5-5`. |
 | OpenAI-compatible | A base URL (`https://api.openai.com/v1`, `http://localhost:11434/v1` for Ollama, ...), an API key reference such as `${env.MARKETING_OPENAI_API_KEY}` if the server needs one, and a model id. |
-| Email | A QQQ messaging provider in the host instance (SMTP or SES), its name, and a from-address. After verifying it end to end, `withVerifiedOperational(true)`. Until then the email transport reports *Configured, not verified* and executions are blocked. |
+| Email (qbit-email) | When qbit-email is produced in the instance and no transport named `qqq_email` is registered, email goes through its outbox (category MARKETING). It needs `publicBaseUrl`, the `QQQ_EMAIL_UNSUBSCRIBE_KEY` secret, an enabled default provider and a default brand with a postal address; a missing piece is reported as *Not configured* or as a plain rejected-execution reason. |
+| Email (QQQ messaging) | A QQQ messaging provider in the host instance (SMTP or SES), its name, and a from-address. After verifying it end to end, `withVerifiedOperational(true)`. Until then the email transport reports *Configured, not verified* and executions are blocked. |
 
 **Status:** check **Configuration Status** on the Marketing dashboard after any change.
 

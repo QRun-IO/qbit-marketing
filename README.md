@@ -6,7 +6,7 @@
 > Marketing for QQQ applications: products and their verified evidence, campaigns, content with revision history, exact human approval, controlled execution, honest measurement, and a marketing agent that prepares work but never publishes.
 
 **Status:** 0.1.0, not yet published.
-- Built against QQQ `4.1.0-RC.4`.
+- Built against QQQ `4.1.0-RC.5`.
 - Hosted in QRun-IO/Voyage next to qbit-crm, on a local branch.
 - The real integrations are implemented but unconfigured. See [what is configured](#what-is-implemented-what-is-not-configured).
 
@@ -82,6 +82,17 @@ Then:
   - Campaign: Results.
   - Content: Proposed Publication.
 - **Actions:** every action is a streamed-ETL record action (record input, standard Review and Result summary lines) in the table's or record's Actions menu. None are nav items.
+
+## Email through qbit-email
+
+When the optional [qbit-email](https://github.com/QRun-IO/qbit-email) qbit is produced in the same instance, email channels named `qqq_email` (the starter-data channel) send through it automatically, unless the host registered its own transport under that name. `QqqMessagingEmailTransport` stays the fallback; without qbit-email nothing changes.
+
+- Each recipient is one `MARKETING` message. qbit-email adds the RFC 8058 unsubscribe link and headers, enforces suppression and owns retries.
+- The campaign content is sent as an ad-hoc Markdown email (subject = title, body plus the call to action link); no qbit-email template is registered.
+- Idempotency key `marketing:<content id>:<approval id>:<recipient key>`; the linked record is the `marketing_execution` row. A repeat is a duplicate, never a second send.
+- Accepted means queued in the qbit-email outbox. A suppressed recipient is skipped, not failed (the result says how many); a refusal by qbit-email is a rejected execution with its reason.
+- Needs qbit-email's `publicBaseUrl`, the `QQQ_EMAIL_UNSUBSCRIBE_KEY` secret, an enabled default provider and a default brand with a postal address. Without the first two the transport reports *Not configured* and says which is missing.
+- qbit-email is an optional dependency (`qbit-email.version`, a SNAPSHOT until its first RC) and needs QQQ `4.1.0-RC.5`.
 
 ## What is implemented, what is not configured
 
