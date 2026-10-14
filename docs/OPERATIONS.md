@@ -12,7 +12,7 @@
 | `providerName` / `model` / `effort` | none | Which provider and model the agent uses. The Marketing Policy can override them. |
 | `maxOutputTokens` | 8000 | Per model call. |
 | `maxToolCallsPerRun` / `maxModelCallsPerRun` / `maxRunSeconds` | 24 / 16 / 300 | Limits of one agent run. |
-| `maxConcurrentAgentRuns` / `maxModelCallsPerMinute` | 2 / 30 | Agent concurrency and rate (per JVM). |
+| `maxConcurrentAgentRuns` / `maxModelCallsPerMinute` | 2 / 30 | Agent concurrency and rate, counted in the database so they hold across replicas. |
 | `maxRowsToModel` | 50 | Rows per read tool. |
 | `pricing` | Anthropic list prices (qbit-assistant) | USD per million tokens, by model id. Models without a price show no cost. Prices are never invented. |
 | `registerKernelTools` | `true` | Contribute the read tools to the QQQ AI tool kernel (when QQQ has `AiToolRegistry`). |
@@ -95,7 +95,7 @@ Fix the cause. If the content changed, it needs a new approval. Then schedule ag
 These are real limitations of 0.1.0. Nothing here is claimed to be production-scale.
 
 - **Single execution worker per JVM.** The worker takes an in-process lock and claims a row by re-reading its status before marking it Running. Two replicas could both claim the same due execution in the instant between read and update, and the idempotency key is then the only protection (it fully protects the test transport, but not email). **Run Marketing's worker on one replica**, or add a database-level claim (`UPDATE ... WHERE status = SCHEDULED`, or `SELECT ... FOR UPDATE SKIP LOCKED`) before scaling out.
-- **Rate limits and agent concurrency are per JVM** (in memory). The channel hourly rate is computed from the database, so it holds across replicas, but only up to the race above.
+- **Agent concurrency and the model-call rate are counted in the database**, so they hold across replicas. Concurrency counts `marketing_agent_run` rows in Running (all products); a run records a heartbeat on each model call, and a Running run silent for `maxRunSeconds` plus 60 seconds is marked Failed ("Stopped responding; the server may have restarted.") before the count. The rate counts model-call steps in the last 60 seconds; at the limit a run waits (bounded by `maxRunSeconds`, and Cancel Run still works) instead of failing. The channel hourly rate is computed the same way. Counting and then inserting is still racy: two replicas can both see room, so a limit can be overshot briefly. A conditional-update claim (`ConditionalUpdateAction`, qqq#1178, QQQ 4.1.0-RC.7) will close that window. Hosts add the new `heartbeat_at` column to `marketing_agent_run` (see `docs/ddl/postgres.sql`).
 - **Agent runs are synchronous** inside the record action, bounded by `maxRunSeconds`. A restart interrupts them: they are marked Failed and can be run again. There is no queue or resume.
 - **The worker queries due executions page by page** (`workerBatchSize` per run) and scans channel attempts for the hourly rate. That suits hundreds of executions per hour, not bulk email. Bulk outreach is deliberately not supported.
 - **Measurement is computed in memory** from a campaign's events on every view. Add a rollup table before campaigns have hundreds of thousands of events.
