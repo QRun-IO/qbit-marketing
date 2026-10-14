@@ -121,7 +121,7 @@ When the optional [qbit-email](https://github.com/QRun-IO/qbit-email) qbit is pr
 | CRM gateway and qbit-crm adapter, explicit lead rules | |
 | Persistence across restart (H2 file, and PostgreSQL in the Voyage host) | |
 
-Scale gaps (single worker per JVM, in-memory rate limits) are listed in [`docs/OPERATIONS.md`](docs/OPERATIONS.md#scale-and-limits).
+Scale gaps (single execution worker per JVM; agent limits are database-counted but still racy across replicas) are listed in [`docs/OPERATIONS.md`](docs/OPERATIONS.md#scale-and-limits).
 
 ## Build
 

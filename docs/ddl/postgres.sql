@@ -321,6 +321,7 @@ CREATE TABLE IF NOT EXISTS marketing_agent_run (
    model VARCHAR(100),
    requested_by_user_id VARCHAR(100),
    started_at TIMESTAMP WITHOUT TIME ZONE,
+   heartbeat_at TIMESTAMP WITHOUT TIME ZONE,
    finished_at TIMESTAMP WITHOUT TIME ZONE,
    model_calls INTEGER,
    tool_calls INTEGER,

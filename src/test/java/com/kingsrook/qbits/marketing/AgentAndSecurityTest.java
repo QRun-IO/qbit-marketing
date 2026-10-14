@@ -17,9 +17,14 @@
 package com.kingsrook.qbits.marketing;
 
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.kingsrook.qbits.assistant.spi.ModelPart;
 import com.kingsrook.qbits.assistant.spi.ModelProviderException;
+import com.kingsrook.qbits.assistant.spi.ModelResponse;
 import com.kingsrook.qbits.assistant.spi.ModelUsage;
 import com.kingsrook.qbits.marketing.agent.MarketingAgentService;
 import com.kingsrook.qbits.marketing.agent.tools.MarketingTools;
@@ -44,6 +49,8 @@ import com.kingsrook.qqq.backend.core.actions.permissions.PermissionEnforcement;
 import com.kingsrook.qqq.backend.core.actions.processes.QProcessCallbackFactory;
 import com.kingsrook.qqq.backend.core.actions.processes.RunProcessAction;
 import com.kingsrook.qqq.backend.core.actions.tables.QueryAction;
+import com.kingsrook.qqq.backend.core.context.CapturedContext;
+import com.kingsrook.qqq.backend.core.context.QContext;
 import com.kingsrook.qqq.backend.core.exceptions.QException;
 import com.kingsrook.qqq.backend.core.exceptions.QPermissionDeniedException;
 import com.kingsrook.qqq.backend.core.model.actions.processes.RunProcessInput;
@@ -280,11 +287,10 @@ class AgentAndSecurityTest extends BaseMarketingTest
 
 
    /*******************************************************************************
-    ** Runs stop at their model-call limit; a cancelled run stops; the
-    ** concurrency limit refuses extra runs.
+    ** Runs stop at their model-call limit; a cancelled run stops.
     *******************************************************************************/
    @Test
-   void testLimitsCancelAndConcurrency() throws QException
+   void testLimitsAndCancel() throws QException
    {
       config.withMaxModelCallsPerRun(2);
       try
@@ -320,20 +326,107 @@ class AgentAndSecurityTest extends BaseMarketingTest
       });
       MarketingAgentRun cancelled = new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null);
       assertThat(AgentRunStatus.getById(cancelled.getStatus())).isEqualTo(AgentRunStatus.CANCELLED);
+   }
 
-      MarketingRuntime runtime = MarketingRuntime.current();
-      assertThat(runtime.tryAcquireAgentPermit()).isTrue();
-      assertThat(runtime.tryAcquireAgentPermit()).isTrue();
-      try
+
+   /*******************************************************************************
+    ** The concurrency limit is counted in the database: a second service
+    ** instance (another replica on the same backend) is refused while the
+    ** first one's run is RUNNING.
+    *******************************************************************************/
+   @Test
+   void testConcurrencyHoldsAcrossReplicas() throws QException
+   {
+      config.withMaxConcurrentAgentRuns(1);
+      CapturedContext         context = QContext.capture();
+      List<MarketingAgentRun> refused = new ArrayList<>();
+      model.thenRespond(request ->
       {
-         MarketingAgentRun busy = new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null);
-         assertThat(busy.getErrorMessage()).contains("Too many agent runs");
-      }
-      finally
-      {
-         runtime.releaseAgentPermit();
-         runtime.releaseAgentPermit();
-      }
+         try
+         {
+            QContext.init(context);
+            refused.add(new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null));
+         }
+         catch(QException e)
+         {
+            throw (new RuntimeException(e));
+         }
+         return (new ModelResponse().withParts(new ArrayList<>(List.of(ModelPart.text("Done.")))).withStopReason(ModelResponse.STOP_END_TURN));
+      });
+
+      MarketingAgentRun first = new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null);
+      assertThat(AgentRunStatus.getById(first.getStatus())).isEqualTo(AgentRunStatus.SUCCEEDED);
+      assertThat(first.getHeartbeatAt()).isNotNull();
+      assertThat(refused).hasSize(1);
+      assertThat(AgentRunStatus.getById(refused.get(0).getStatus())).isEqualTo(AgentRunStatus.FAILED);
+      assertThat(refused.get(0).getErrorMessage()).contains("Too many agent runs").contains("limit 1");
+
+      /////////////////////////////////////////////////////////////
+      // the first run finished, so the next one is let through  //
+      /////////////////////////////////////////////////////////////
+      model.thenText("Again.");
+      assertThat(AgentRunStatus.getById(new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null).getStatus())).isEqualTo(AgentRunStatus.SUCCEEDED);
+   }
+
+
+
+   /*******************************************************************************
+    ** A RUNNING run whose heartbeat is older than maxRunSeconds plus the grace
+    ** is failed with a plain reason (and no longer counts); a fresh one stays.
+    *******************************************************************************/
+   @Test
+   void testStaleRunningRunIsReaped() throws QException
+   {
+      config.withMaxConcurrentAgentRuns(1);
+      Instant stale = Instant.now().minusSeconds(config.getMaxRunSeconds() + MarketingAgentService.STALE_GRACE_SECONDS + 30);
+      Integer staleId = MarketingStore.insertInternal(new MarketingAgentRun().withTask(AgentTask.ANALYZE_RESULTS.getId()).withStatus(AgentRunStatus.RUNNING.getId())
+         .withStartedAt(stale).withHeartbeatAt(stale)).getValueInteger("id");
+
+      model.thenText("Ran.");
+      MarketingAgentRun run = new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null);
+      assertThat(AgentRunStatus.getById(run.getStatus())).isEqualTo(AgentRunStatus.SUCCEEDED);
+
+      QRecord reaped = MarketingStore.get(MarketingAgentRun.TABLE_NAME, staleId);
+      assertThat(reaped.getValueInteger("status")).isEqualTo(AgentRunStatus.FAILED.getId());
+      assertThat(reaped.getValueString("errorMessage")).isEqualTo("Stopped responding; the server may have restarted.");
+
+      ///////////////////////////////////////////////////////////////////
+      // a RUNNING run with a recent heartbeat is alive and counts     //
+      ///////////////////////////////////////////////////////////////////
+      MarketingStore.insertInternal(new MarketingAgentRun().withTask(AgentTask.ANALYZE_RESULTS.getId()).withStatus(AgentRunStatus.RUNNING.getId())
+         .withStartedAt(stale).withHeartbeatAt(Instant.now()));
+      MarketingAgentRun refused = new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null);
+      assertThat(refused.getErrorMessage()).contains("Too many agent runs");
+   }
+
+
+
+   /*******************************************************************************
+    ** At the per-minute model-call limit a run waits for the window to clear
+    ** rather than failing; the wait is bounded by maxRunSeconds.
+    *******************************************************************************/
+   @Test
+   void testModelCallRateWaitsInsteadOfFailing() throws QException
+   {
+      config.withMaxModelCallsPerMinute(1);
+      MarketingAgentService service = new MarketingAgentService().withModelCallWindow(Duration.ofMillis(1500), Duration.ofMillis(50));
+
+      model.thenText("One.").thenText("Two.");
+      assertThat(AgentRunStatus.getById(service.run(AgentTask.ANALYZE_RESULTS, campaignId, null, null).getStatus())).isEqualTo(AgentRunStatus.SUCCEEDED);
+
+      long              start  = System.currentTimeMillis();
+      MarketingAgentRun second = service.run(AgentTask.ANALYZE_RESULTS, campaignId, null, null);
+      assertThat(AgentRunStatus.getById(second.getStatus())).isEqualTo(AgentRunStatus.SUCCEEDED);
+      assertThat(System.currentTimeMillis() - start).isGreaterThanOrEqualTo(500);
+
+      ///////////////////////////////////////////////////////////////////
+      // a wait longer than the run's time ends the run, not the JVM   //
+      ///////////////////////////////////////////////////////////////////
+      config.withMaxRunSeconds(1);
+      MarketingAgentService slow     = new MarketingAgentService().withModelCallWindow(Duration.ofSeconds(60), Duration.ofMillis(50));
+      MarketingAgentRun     timedOut = slow.run(AgentTask.ANALYZE_RESULTS, campaignId, null, null);
+      assertThat(AgentRunStatus.getById(timedOut.getStatus())).isEqualTo(AgentRunStatus.FAILED);
+      assertThat(timedOut.getErrorMessage()).contains("exceeded 1 seconds").contains("rate limit");
    }
 
 }
