@@ -98,6 +98,12 @@ Set any existing Marketing Policy provider override to `openai-compatible` as we
   - Content: Proposed Publication.
 - **Actions:** every action is a streamed-ETL record action (record input, standard Review and Result summary lines) in the table's or record's Actions menu. None are nav items.
 
+## Help
+
+The help text ships with the code it describes, as a QQQ help bundle at `help/qbit-marketing.yaml` (a classpath resource, layer `QBIT`). It has 346 entries: the Marketing app, every `marketing_*` table and each of its non-trivial fields, every record and table action, every widget (the dashboard widgets and the child lists) and every possible-value source. Each entry has a one-line summary for the tooltip and a few sentences of plain help. Labels, maximum lengths and enum values are `{{...}}` references, so the help does not repeat what the metadata already says.
+
+The bundle is loaded with `HelpBundles.register(qInstance, "help/qbit-marketing.yaml")` once qqq#1198 ships. The producer will register it then; until that core API exists, nothing registers it. `HelpBundleCoverageTest` checks that the bundle is complete, that every key and reference resolves, and that summaries stay short and plain.
+
 ## Email through qbit-email
 
 When the optional [qbit-email](https://github.com/QRun-IO/qbit-email) qbit is produced in the same instance, email channels named `qqq_email` (the starter-data channel) send through it automatically, unless the host registered its own transport under that name. `QqqMessagingEmailTransport` stays the fallback; without qbit-email nothing changes.

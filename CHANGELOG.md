@@ -14,6 +14,7 @@ All notable changes to this project are documented here. The format follows Keep
 - Upgrade QQQ to `4.1.0-RC.6`; enable architecture enforcement and strict UI API routes.
 
 ### Added
+- Help bundle `help/qbit-marketing.yaml` (346 entries) covering the app, tables, fields, actions, widgets and possible-value sources, with `HelpBundleCoverageTest` as the coverage gate until `HelpBundleAssertions` ships in core (qqq#1198). The producer registers it once that API exists.
 - Product-contingent possible values for editable campaign, claim, finding, metric and outcome-event references.
 - Repository scaffold: build, CI and the repository standard files.
 - **Model:** 18 standard `marketing_*` tables, 21 enum possible-value sources, joins and child lists. The PostgreSQL reference DDL (`docs/ddl/postgres.sql`) and an H2 twin are generated from one spec (`scripts/generate-model.py`).
