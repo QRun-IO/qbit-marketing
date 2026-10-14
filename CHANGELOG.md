@@ -48,3 +48,7 @@ All notable changes to this project are documented here. The format follows Keep
   - Streamed-ETL record actions with standard summary lines.
 - **Starter data:** QQQ, gclo and MarkdownViewr for Windows, verified 2026-10-12, with honest starter campaigns and the four channels.
 - **Docs:** README, DESIGN, OPERATIONS and STARTER-DATA.
+
+### Changed
+- **Email:** new `QbitEmailTransport` sends campaign email through qbit-email (one MARKETING message per recipient, unsubscribe and suppression enforced there, idempotent, linked to the execution). It is selected automatically for the `qqq_email` channel when qbit-email is produced and the host registered no such transport; `QqqMessagingEmailTransport` remains the fallback. qbit-email is an optional dependency; QQQ moves to `4.1.0-RC.5`.
+

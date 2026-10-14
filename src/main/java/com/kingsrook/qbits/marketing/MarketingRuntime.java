@@ -29,9 +29,11 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 import com.kingsrook.qbits.assistant.provider.AssistantModelProvider;
 import com.kingsrook.qbits.marketing.crm.MarketingCrmGateway;
+import com.kingsrook.qbits.marketing.email.QbitEmailTransport;
 import com.kingsrook.qbits.marketing.model.MarketingPolicy;
 import com.kingsrook.qbits.marketing.transport.ControlledTestTransport;
 import com.kingsrook.qbits.marketing.transport.MarketingTransport;
+import com.kingsrook.qbits.marketing.transport.QqqMessagingEmailTransport;
 import com.kingsrook.qqq.backend.core.actions.tables.QueryAction;
 import com.kingsrook.qqq.backend.core.context.QContext;
 import com.kingsrook.qqq.backend.core.exceptions.QException;
@@ -71,6 +73,7 @@ public class MarketingRuntime implements QSupplementalInstanceMetaData
    private final ReentrantLock                   workerLock = new ReentrantLock();
    private final Deque<Long>                     modelCallTimes = new ArrayDeque<>();
    private final String                          workerName;
+   private volatile MarketingTransport             qbitEmailTransport;
 
 
 
@@ -131,11 +134,47 @@ public class MarketingRuntime implements QSupplementalInstanceMetaData
 
 
    /*******************************************************************************
-    ** A transport by name, or null.
+    ** A transport by name, or null. When the host registered no transport named
+    ** qqq_email (the default email channel name) and qbit-email is produced in the
+    ** instance, that name resolves to QbitEmailTransport; a host-registered
+    ** transport always wins, and QqqMessagingEmailTransport remains the fallback
+    ** the host can register.
     *******************************************************************************/
    public MarketingTransport getTransport(String name)
    {
-      return (name == null ? null : transports.get(name));
+      if(name == null)
+      {
+         return (null);
+      }
+      MarketingTransport transport = transports.get(name);
+      if(transport == null && QqqMessagingEmailTransport.DEFAULT_NAME.equals(name) && emailQBitClassPresent() && QbitEmailTransport.isInstalled(QContext.getQInstance()))
+      {
+         if(qbitEmailTransport == null)
+         {
+            qbitEmailTransport = new QbitEmailTransport();
+         }
+         return (qbitEmailTransport);
+      }
+      return (transport);
+   }
+
+
+
+   /*******************************************************************************
+    ** qbit-email is an optional dependency: touch QbitEmailTransport only when
+    ** its classes are present.
+    *******************************************************************************/
+   private static boolean emailQBitClassPresent()
+   {
+      try
+      {
+         Class.forName("com.kingsrook.qbits.email.outbox.EmailService");
+         return (true);
+      }
+      catch(ClassNotFoundException | LinkageError e)
+      {
+         return (false);
+      }
    }
 
 
