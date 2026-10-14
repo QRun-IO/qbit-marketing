@@ -78,11 +78,15 @@ import static com.kingsrook.qqq.backend.core.logging.LogUtils.logPair;
  ** A run:
  ** 1. checks the policy (kill switch), the provider and model, the daily
  **    token and monthly cost budgets, and the concurrency limit - failing the
- **    run with a plain reason when any is missing (missing-provider behavior);
+ **    run with a plain reason when any is missing (missing-provider behavior).
+ **    The concurrency limit counts RUNNING runs in the database (after failing
+ **    those whose heartbeat stopped), so it holds across replicas;
  ** 2. runs the deterministic readiness checks (a CHECK step);
  ** 3. loops model call -> tool calls, bounded by model calls, tool calls,
- **    wall-clock time and the per-minute model-call rate; it re-reads its own
- **    status before every model call so Cancel Run stops it;
+ **    wall-clock time and the per-minute model-call rate (counted from the
+ **    database; at the limit the run waits, it does not fail); it re-reads its
+ **    own status before every model call so Cancel Run stops it, and records a
+ **    heartbeat on each model call;
  ** 4. records every model call (tokens, stop reason) and tool call (input,
  **    outcome, enveloped result), the usage and cost, the drafts and findings
  **    it created, and its final summary.
@@ -98,7 +102,28 @@ public class MarketingAgentService
 
    static final int MAX_STEP_JSON = 20_000;
 
+   /////////////////////////////////////////////////////////////////////////////
+   // a RUNNING run silent for maxRunSeconds plus this long is not alive      //
+   /////////////////////////////////////////////////////////////////////////////
+   public static final int STALE_GRACE_SECONDS = 60;
+
    private final AiRedactor redactor = new AiRedactor(List.of());
+
+   private Duration modelCallWindow = Duration.ofSeconds(60);
+   private Duration modelCallPoll   = Duration.ofSeconds(1);
+
+
+
+   /*******************************************************************************
+    ** Change the per-minute window and how often a waiting run re-checks it
+    ** (the defaults are 60 seconds and 1 second; tests use short ones).
+    *******************************************************************************/
+   public MarketingAgentService withModelCallWindow(Duration window, Duration poll)
+   {
+      this.modelCallWindow = window;
+      this.modelCallPoll = poll;
+      return (this);
+   }
 
 
 
@@ -158,19 +183,7 @@ public class MarketingAgentService
          return (finish(run, AgentRunStatus.FAILED, null, refusal, null, new MarketingToolContext(run, 1), new ModelUsage(), 0, 0));
       }
 
-      if(!runtime.tryAcquireAgentPermit())
-      {
-         return (finish(run, AgentRunStatus.FAILED, null, "Too many agent runs at once (limit " + runtime.getConfig().getMaxConcurrentAgentRuns() + "); start it again shortly.",
-            null, new MarketingToolContext(run, 1), new ModelUsage(), 0, 0));
-      }
-      try
-      {
-         return (execute(runtime, policy, provider, model, run, task));
-      }
-      finally
-      {
-         runtime.releaseAgentPermit();
-      }
+      return (execute(runtime, policy, provider, model, run, task));
    }
 
 
@@ -213,6 +226,101 @@ public class MarketingAgentService
             return ("This month's agent cost budget is used up.");
          }
       }
+
+      /////////////////////////////////////////////////////////////////////////////
+      // concurrency is counted in the database, across every replica and        //
+      // product. NOTE: count-then-mark-RUNNING is still racy - two replicas can //
+      // both see room and both start. A conditional-update claim                //
+      // (ConditionalUpdateAction, qqq#1178, QQQ 4.1.0-RC.7) will close that     //
+      // window as a follow-up.                                                  //
+      /////////////////////////////////////////////////////////////////////////////
+      failStaleRuns(runtime.getConfig());
+      int limit = policy.getMaxConcurrentAgentRuns() != null ? policy.getMaxConcurrentAgentRuns() : runtime.getConfig().getMaxConcurrentAgentRuns();
+      if(runningRuns() >= limit)
+      {
+         return ("Too many agent runs at once (limit " + limit + "); start it again shortly.");
+      }
+      return (null);
+   }
+
+
+
+   /*******************************************************************************
+    ** RUNNING runs (all products) whose heartbeat - or start, for a run that
+    ** never beat - is older than maxRunSeconds plus a grace period are failed:
+    ** their server stopped. Returns how many.
+    *******************************************************************************/
+   int failStaleRuns(MarketingQBitConfig config) throws QException
+   {
+      Instant       cutoff  = Instant.now().minusSeconds((long) config.getMaxRunSeconds() + STALE_GRACE_SECONDS);
+      List<QRecord> running = MarketingStore.asSystem(() -> MarketingStore.query(MarketingAgentRun.TABLE_NAME,
+         new QQueryFilter(new QFilterCriteria("status", QCriteriaOperator.EQUALS, AgentRunStatus.RUNNING.getId()))));
+
+      int count = 0;
+      for(QRecord record : running)
+      {
+         Instant last = record.getValueInstant("heartbeatAt");
+         last = last != null ? last : record.getValueInstant("startedAt");
+         last = last != null ? last : record.getValueInstant("createDate");
+         if(last != null && last.isBefore(cutoff))
+         {
+            MarketingStore.updateInternal(MarketingAgentRun.TABLE_NAME, new QRecord().withValue("id", record.getValue("id"))
+               .withValue("status", AgentRunStatus.FAILED.getId()).withValue("finishedAt", Instant.now())
+               .withValue("errorMessage", "Stopped responding; the server may have restarted."));
+            count++;
+         }
+      }
+      return (count);
+   }
+
+
+
+   /*******************************************************************************
+    ** RUNNING runs across all products, counted as the system user.
+    *******************************************************************************/
+   static int runningRuns() throws QException
+   {
+      return (MarketingStore.asSystem(() -> MarketingStore.count(MarketingAgentRun.TABLE_NAME,
+         new QQueryFilter(new QFilterCriteria("status", QCriteriaOperator.EQUALS, AgentRunStatus.RUNNING.getId())))));
+   }
+
+
+
+   /*******************************************************************************
+    ** Model calls (steps of the model-call kind, all runs, system user) recorded
+    ** since the instant.
+    *******************************************************************************/
+   static int modelCallsSince(Instant since) throws QException
+   {
+      return (MarketingStore.asSystem(() -> MarketingStore.count(MarketingAgentStep.TABLE_NAME, new QQueryFilter(
+         new QFilterCriteria("kind", QCriteriaOperator.EQUALS, AgentStepKind.MODEL_CALL.getId()),
+         new QFilterCriteria("createDate", QCriteriaOperator.GREATER_THAN_OR_EQUALS, since)))));
+   }
+
+
+
+   /*******************************************************************************
+    ** Wait until the per-minute model-call limit has room. Returns null to go
+    ** ahead, CANCELLED if a person cancelled the run while waiting, or FAILED
+    ** if the run's time ran out first.
+    **
+    ** NOTE: counting then calling is racy across replicas (see preflight); the
+    ** conditional-update claim follow-up (qqq#1178) will close it.
+    *******************************************************************************/
+   private AgentRunStatus awaitModelCallSlot(MarketingAgentRun run, int limit, Instant deadline) throws QException, InterruptedException
+   {
+      while(modelCallsSince(Instant.now().minus(modelCallWindow)) >= limit)
+      {
+         if(isCancelled(run.getId()))
+         {
+            return (AgentRunStatus.CANCELLED);
+         }
+         if(Instant.now().isAfter(deadline))
+         {
+            return (AgentRunStatus.FAILED);
+         }
+         Thread.sleep(modelCallPoll.toMillis());
+      }
       return (null);
    }
 
@@ -229,7 +337,7 @@ public class MarketingAgentService
       int                 maxTools = policy != null && policy.getMaxToolCallsPerRun() != null ? policy.getMaxToolCallsPerRun() : config.getMaxToolCallsPerRun();
 
       MarketingStore.updateInternal(MarketingAgentRun.TABLE_NAME, new QRecord().withValue("id", run.getId())
-         .withValue("status", AgentRunStatus.RUNNING.getId()).withValue("startedAt", Instant.now()));
+         .withValue("status", AgentRunStatus.RUNNING.getId()).withValue("startedAt", Instant.now()).withValue("heartbeatAt", Instant.now()));
 
       MarketingToolContext context = new MarketingToolContext(run, config.getMaxRowsToModel());
       ModelUsage           usage   = new ModelUsage();
@@ -278,11 +386,21 @@ public class MarketingAgentService
             {
                return (finish(run, AgentRunStatus.FAILED, null, "Stopped: the run reached its limit of " + config.getMaxModelCallsPerRun() + " model calls.", null, context, usage, modelCalls, toolCalls));
             }
-            if(!runtime.tryReserveModelCall())
+
+            /////////////////////////////////////////////////////////////////
+            // at the per-minute limit, wait (bounded by the run's time)   //
+            /////////////////////////////////////////////////////////////////
+            AgentRunStatus blocked = awaitModelCallSlot(run, config.getMaxModelCallsPerMinute(), deadline);
+            if(blocked == AgentRunStatus.CANCELLED)
             {
-               return (finish(run, AgentRunStatus.FAILED, null, "Stopped: the model-call rate limit (" + config.getMaxModelCallsPerMinute() + " per minute) was reached.", null, context, usage, modelCalls,
-                  toolCalls));
+               return (finish(run, AgentRunStatus.CANCELLED, null, "Cancelled by a person.", null, context, usage, modelCalls, toolCalls));
             }
+            if(blocked == AgentRunStatus.FAILED)
+            {
+               return (finish(run, AgentRunStatus.FAILED, null, "Stopped: the run exceeded " + config.getMaxRunSeconds() + " seconds, waiting for the model-call rate limit ("
+                  + config.getMaxModelCallsPerMinute() + " per minute).", null, context, usage, modelCalls, toolCalls));
+            }
+            MarketingStore.updateInternal(MarketingAgentRun.TABLE_NAME, new QRecord().withValue("id", run.getId()).withValue("heartbeatAt", Instant.now()));
 
             ModelRequest request = new ModelRequest()
                .withModel(model)

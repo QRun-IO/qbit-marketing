@@ -69,6 +69,9 @@ public class MarketingAgentRun extends QRecordEntity
    private Instant startedAt;
 
    @QField()
+   private Instant heartbeatAt;
+
+   @QField()
    private Instant finishedAt;
 
    @QField()
@@ -456,6 +459,36 @@ public class MarketingAgentRun extends QRecordEntity
    public MarketingAgentRun withStartedAt(Instant startedAt)
    {
       this.startedAt = startedAt;
+      return (this);
+   }
+
+
+   /*******************************************************************************
+    ** Getter for heartbeatAt
+    *******************************************************************************/
+   public Instant getHeartbeatAt()
+   {
+      return (this.heartbeatAt);
+   }
+
+
+
+   /*******************************************************************************
+    ** Setter for heartbeatAt
+    *******************************************************************************/
+   public void setHeartbeatAt(Instant heartbeatAt)
+   {
+      this.heartbeatAt = heartbeatAt;
+   }
+
+
+
+   /*******************************************************************************
+    ** Fluent setter for heartbeatAt
+    *******************************************************************************/
+   public MarketingAgentRun withHeartbeatAt(Instant heartbeatAt)
+   {
+      this.heartbeatAt = heartbeatAt;
       return (this);
    }
 
