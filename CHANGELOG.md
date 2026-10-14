@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows Keep
 
 ### Changed
 - `QbitCrmGateway` uses qbit-crm 0.2.0's `crm_*` snake_case table names (`crm_contact`, ...). qbit-crm 0.1.0's camelCase tables are no longer supported.
+- Make the agent limits distributed (#4): `maxConcurrentAgentRuns` counts Running `marketing_agent_run` rows in the database (a new `heartbeatAt` column, updated on each model call, lets runs whose server stopped be marked Failed first), and `maxModelCallsPerMinute` counts model-call steps in the last 60 seconds and makes a run wait rather than fail. The in-memory semaphore and rate window are gone; the settings and Marketing Policy override keep their names and defaults (the policy `maxConcurrentAgentRuns` override now applies). Hosts add `heartbeat_at` to `marketing_agent_run`. The count-then-insert window is still racy; a conditional-update claim (qqq#1178) is a follow-up.
+- Move to the assistant provider SPI `0.1.0-RC.12` (package `com.kingsrook.qbits.assistant.spi`) and `qbit-build-parent` `2.1.2`, and drop the per-repository guardrail allow-lists. `qbit-assistant-provider-openai` becomes a test dependency; hosts that register it add it themselves.
 - Switch the optional qbit-email integration to the published `com.kingsrook.qbits.email.api` package in `0.1.0-RC.3` (fixes #13). Preserve MARKETING messages, idempotency keys, execution links and outcome mapping; use typed readiness failures so missing providers or brand postal addresses remain send-time rejections. Upgrade `qbit-build-parent` to `2.1.1` and remove all per-repository guardrail allow-lists.
 - Resolve architecture finding F5 (#9): depend on `qbit-assistant-provider-api` and `qbit-assistant-provider-openai` `0.1.0-RC.11`, with no full assistant dependency, including in tests.
 - Replace the local OpenAI-compatible implementation with the published provider and document `ProviderSettings`, environment-key resolution and provider-name migration. Agent tests use a local scripted double.
@@ -52,5 +54,6 @@ All notable changes to this project are documented here. The format follows Keep
 - **Docs:** README, DESIGN, OPERATIONS and STARTER-DATA.
 
 ### Changed
+- Move to the assistant provider SPI `0.1.0-RC.12` (package `com.kingsrook.qbits.assistant.spi`) and `qbit-build-parent` `2.1.2`, and drop the per-repository guardrail allow-lists. `qbit-assistant-provider-openai` becomes a test dependency; hosts that register it add it themselves.
 - **Email:** new `QbitEmailTransport` sends campaign email through qbit-email (one MARKETING message per recipient, unsubscribe and suppression enforced there, idempotent, linked to the execution). It is selected automatically for the `qqq_email` channel when qbit-email is produced and the host registered no such transport; `QqqMessagingEmailTransport` remains the fallback. qbit-email is an optional dependency; QQQ moves to `4.1.0-RC.5`.
 
