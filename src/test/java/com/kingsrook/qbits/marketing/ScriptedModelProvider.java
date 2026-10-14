@@ -38,7 +38,7 @@ import com.kingsrook.qqq.backend.core.utils.JsonUtils;
 /*******************************************************************************
  ** Synchronous scripted responses and request snapshots for marketing tests.
  *******************************************************************************/
-class ScriptedModelProvider implements AssistantModelProvider
+public class ScriptedModelProvider implements AssistantModelProvider
 {
    private final String name;
    private final Deque<Step> steps = new ArrayDeque<>();
@@ -51,7 +51,7 @@ class ScriptedModelProvider implements AssistantModelProvider
    /*******************************************************************************
     ** Register under the name selected by the test configuration.
     *******************************************************************************/
-   ScriptedModelProvider(String name)
+   public ScriptedModelProvider(String name)
    {
       this.name = name;
    }
@@ -61,7 +61,7 @@ class ScriptedModelProvider implements AssistantModelProvider
    /*******************************************************************************
     ** Queue a complete answer.
     *******************************************************************************/
-   ScriptedModelProvider thenText(String text)
+   public ScriptedModelProvider thenText(String text)
    {
       return (thenRespond(request -> new ModelResponse().withParts(List.of(ModelPart.text(text))).withStopReason(ModelResponse.STOP_END_TURN)));
    }
@@ -71,7 +71,7 @@ class ScriptedModelProvider implements AssistantModelProvider
    /*******************************************************************************
     ** Queue a single tool call.
     *******************************************************************************/
-   ScriptedModelProvider thenToolUse(String toolName, Map<String, Object> input)
+   public ScriptedModelProvider thenToolUse(String toolName, Map<String, Object> input)
    {
       return (thenToolUses(null, List.<Object[]>of(new Object[] { toolName, input })));
    }
@@ -82,7 +82,7 @@ class ScriptedModelProvider implements AssistantModelProvider
     ** Queue parallel tool calls using the test fixtures' name/input pairs.
     *******************************************************************************/
    @SuppressWarnings("unchecked")
-   ScriptedModelProvider thenToolUses(String preamble, List<Object[]> calls)
+   public ScriptedModelProvider thenToolUses(String preamble, List<Object[]> calls)
    {
       return (thenRespond(request ->
       {
@@ -104,7 +104,7 @@ class ScriptedModelProvider implements AssistantModelProvider
    /*******************************************************************************
     ** Queue a provider failure, including usage already incurred.
     *******************************************************************************/
-   ScriptedModelProvider thenError(ModelProviderException.Kind kind, String message)
+   public ScriptedModelProvider thenError(ModelProviderException.Kind kind, String message)
    {
       return (thenRespond(request ->
       {
@@ -117,7 +117,7 @@ class ScriptedModelProvider implements AssistantModelProvider
    /*******************************************************************************
     ** Queue a response that can inspect the request or change test state.
     *******************************************************************************/
-   ScriptedModelProvider thenRespond(Step step)
+   public ScriptedModelProvider thenRespond(Step step)
    {
       steps.add(step);
       return (this);
@@ -128,7 +128,7 @@ class ScriptedModelProvider implements AssistantModelProvider
    /*******************************************************************************
     ** Set usage for budget and cost assertions.
     *******************************************************************************/
-   ScriptedModelProvider withUsagePerCall(ModelUsage usage)
+   public ScriptedModelProvider withUsagePerCall(ModelUsage usage)
    {
       usagePerCall = usage;
       return (this);
