@@ -35,8 +35,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 
 /*******************************************************************************
- ** QbitCrmGateway against fixture CRM tables under both qbit-crm naming
- ** schemes: snake_case (current) and camelCase (legacy).
+ ** QbitCrmGateway against fixture tables shaped like qbit-crm 0.2.0's crm_*
+ ** tables.
  *******************************************************************************/
 class QbitCrmGatewayTest extends BaseMarketingTest
 {
@@ -56,57 +56,29 @@ class QbitCrmGatewayTest extends BaseMarketingTest
     **
     *******************************************************************************/
    @Test
-   void testSnakeCaseTables() throws QException
+   void testCrmFlows() throws QException
    {
       defineSnakeCaseTables();
-      assertThat(QbitCrmGateway.contactTable()).isEqualTo("crm_contact");
+      assertThat(QbitCrmGateway.CONTACT_TABLE).isEqualTo("crm_contact");
       exerciseGateway();
    }
 
 
 
    /*******************************************************************************
-    **
-    *******************************************************************************/
-   @Test
-   void testLegacyCamelCaseTables() throws QException
-   {
-      defineLegacyTables();
-      assertThat(QbitCrmGateway.contactTable()).isEqualTo("crmContact");
-      exerciseGateway();
-   }
-
-
-
-   /*******************************************************************************
-    ** The snake_case tables win when both generations are defined.
-    *******************************************************************************/
-   @Test
-   void testSnakeCasePreferredWhenBothExist()
-   {
-      defineSnakeCaseTables();
-      defineLegacyTables();
-
-      assertThat(QbitCrmGateway.contactTable()).isEqualTo(QbitCrmGateway.CONTACT_TABLE);
-      assertThat(QbitCrmGateway.activityTypeTable()).isEqualTo(QbitCrmGateway.ACTIVITY_TYPE_TABLE);
-   }
-
-
-
-   /*******************************************************************************
-    ** The same flows, whichever naming the instance has.
+    ** Eligibility, recipient scopes, form submissions and activities.
     *******************************************************************************/
    private void exerciseGateway() throws QException
    {
       QbitCrmGateway gateway = new QbitCrmGateway();
       assertThat(gateway.isAvailable()).isTrue();
 
-      Integer granted    = insert(QbitCrmGateway.contactTable(), new QRecord().withValue("email", "yes@example.org").withValue("doNotEmail", false));
-      Integer noConsent  = insert(QbitCrmGateway.contactTable(), new QRecord().withValue("email", "none@example.org").withValue("doNotEmail", false));
-      Integer suppressed = insert(QbitCrmGateway.contactTable(), new QRecord().withValue("email", "dne@example.org").withValue("doNotEmail", true));
+      Integer granted    = insert(QbitCrmGateway.CONTACT_TABLE, new QRecord().withValue("email", "yes@example.org").withValue("doNotEmail", false));
+      Integer noConsent  = insert(QbitCrmGateway.CONTACT_TABLE, new QRecord().withValue("email", "none@example.org").withValue("doNotEmail", false));
+      Integer suppressed = insert(QbitCrmGateway.CONTACT_TABLE, new QRecord().withValue("email", "dne@example.org").withValue("doNotEmail", true));
       for(Integer contactId : List.of(granted, suppressed))
       {
-         insert(QbitCrmGateway.consentTable(), new QRecord().withValue("contactId", contactId).withValue("consentType", 1).withValue("status", 1)
+         insert(QbitCrmGateway.CONSENT_TABLE, new QRecord().withValue("contactId", contactId).withValue("consentType", 1).withValue("status", 1)
             .withValue("consentDate", Instant.now().minus(2, ChronoUnit.DAYS)));
       }
 
@@ -128,9 +100,9 @@ class QbitCrmGatewayTest extends BaseMarketingTest
       /////////////////////////////////////
       // resolveRecipients: list scope   //
       /////////////////////////////////////
-      insert(QbitCrmGateway.listMemberTable(), new QRecord().withValue("emailListId", 7).withValue("contactId", granted).withValue("status", 1));
-      insert(QbitCrmGateway.listMemberTable(), new QRecord().withValue("emailListId", 7).withValue("contactId", noConsent).withValue("status", 1));
-      insert(QbitCrmGateway.listMemberTable(), new QRecord().withValue("emailListId", 7).withValue("contactId", suppressed).withValue("status", 2));
+      insert(QbitCrmGateway.LIST_MEMBER_TABLE, new QRecord().withValue("emailListId", 7).withValue("contactId", granted).withValue("status", 1));
+      insert(QbitCrmGateway.LIST_MEMBER_TABLE, new QRecord().withValue("emailListId", 7).withValue("contactId", noConsent).withValue("status", 1));
+      insert(QbitCrmGateway.LIST_MEMBER_TABLE, new QRecord().withValue("emailListId", 7).withValue("contactId", suppressed).withValue("status", 2));
       List<CrmRecipient> members = gateway.resolveRecipients("crm-list:7");
       assertThat(members).hasSize(3);
       assertThat(members.stream().filter(r -> r.eligibility().eligible()).map(CrmRecipient::address)).containsExactly("yes@example.org");
@@ -140,8 +112,8 @@ class QbitCrmGatewayTest extends BaseMarketingTest
       // listFormSubmissions   //
       ///////////////////////////
       Instant created = Instant.now().minus(1, ChronoUnit.HOURS);
-      insert(QbitCrmGateway.formSubmissionTable(), new QRecord().withValue("contactId", granted).withValue("utmCampaign", "spring").withValue("createDate", created));
-      insert(QbitCrmGateway.formSubmissionTable(), new QRecord().withValue("contactId", noConsent).withValue("utmCampaign", "other").withValue("createDate", created));
+      insert(QbitCrmGateway.FORM_SUBMISSION_TABLE, new QRecord().withValue("contactId", granted).withValue("utmCampaign", "spring").withValue("createDate", created));
+      insert(QbitCrmGateway.FORM_SUBMISSION_TABLE, new QRecord().withValue("contactId", noConsent).withValue("utmCampaign", "other").withValue("createDate", created));
       List<CrmFormSubmissionRef> submissions = gateway.listFormSubmissions("spring", null);
       assertThat(submissions).hasSize(1);
       assertThat(submissions.get(0).contactId()).isEqualTo(granted);
@@ -151,9 +123,9 @@ class QbitCrmGatewayTest extends BaseMarketingTest
       // recordActivity   //
       //////////////////////
       assertThatThrownBy(() -> gateway.recordActivity(granted, "Subject", "Body")).hasMessageContaining("Note");
-      insert(QbitCrmGateway.activityTypeTable(), new QRecord().withValue("name", "Note"));
+      insert(QbitCrmGateway.ACTIVITY_TYPE_TABLE, new QRecord().withValue("name", "Note"));
       gateway.recordActivity(granted, "Subject", "Body");
-      List<QRecord> activities = MarketingStore.query(QbitCrmGateway.activityTable(), new QQueryFilter());
+      List<QRecord> activities = MarketingStore.query(QbitCrmGateway.ACTIVITY_TABLE, new QQueryFilter());
       assertThat(activities).hasSize(1);
       assertThat(activities.get(0).getValueString("subject")).isEqualTo("Subject");
       assertThat(activities.get(0).getValueInteger("contactId")).isEqualTo(granted);
@@ -178,17 +150,6 @@ class QbitCrmGatewayTest extends BaseMarketingTest
    {
       defineCrmTables(QbitCrmGateway.CONTACT_TABLE, QbitCrmGateway.CONSENT_TABLE, QbitCrmGateway.LIST_MEMBER_TABLE,
          QbitCrmGateway.FORM_SUBMISSION_TABLE, QbitCrmGateway.ACTIVITY_TABLE, QbitCrmGateway.ACTIVITY_TYPE_TABLE);
-   }
-
-
-
-   /*******************************************************************************
-    **
-    *******************************************************************************/
-   private void defineLegacyTables()
-   {
-      defineCrmTables(QbitCrmGateway.LEGACY_CONTACT_TABLE, QbitCrmGateway.LEGACY_CONSENT_TABLE, QbitCrmGateway.LEGACY_LIST_MEMBER_TABLE,
-         QbitCrmGateway.LEGACY_FORM_SUBMISSION_TABLE, QbitCrmGateway.LEGACY_ACTIVITY_TABLE, QbitCrmGateway.LEGACY_ACTIVITY_TYPE_TABLE);
    }
 
 

@@ -5,7 +5,7 @@ All notable changes to this project are documented here. The format follows Keep
 ## [0.1.0] - Unreleased
 
 ### Changed
-- `QbitCrmGateway` resolves qbit-crm table names at call time, preferring the new snake_case names (`crm_contact`, ...) and falling back to the legacy camelCase ones; the legacy names stay available as `LEGACY_*` constants.
+- `QbitCrmGateway` uses qbit-crm 0.2.0's `crm_*` snake_case table names (`crm_contact`, ...). qbit-crm 0.1.0's camelCase tables are no longer supported.
 - Switch the optional qbit-email integration to the published `com.kingsrook.qbits.email.api` package in `0.1.0-RC.3` (fixes #13). Preserve MARKETING messages, idempotency keys, execution links and outcome mapping; use typed readiness failures so missing providers or brand postal addresses remain send-time rejections. Upgrade `qbit-build-parent` to `2.1.1` and remove all per-repository guardrail allow-lists.
 - Resolve architecture finding F5 (#9): depend on `qbit-assistant-provider-api` and `qbit-assistant-provider-openai` `0.1.0-RC.11`, with no full assistant dependency, including in tests.
 - Replace the local OpenAI-compatible implementation with the published provider and document `ProviderSettings`, environment-key resolution and provider-name migration. Agent tests use a local scripted double.

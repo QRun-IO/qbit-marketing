@@ -40,16 +40,15 @@ import com.kingsrook.qqq.backend.core.utils.ValueUtils;
  ** compile dependency on the CRM and CRM permissions and locks apply.
  **
  ** Rules it applies (from qbit-crm's own model):
- ** - Email consent: the contact's most recent consent record (crm_consent_record, or legacy crmConsentRecord) of type Email
+ ** - Email consent: the contact's most recent crm_consent_record of type Email
  **   decides (Granted, and not past its expiry date). No record means no
  **   consent: Marketing does not send unsolicited email.
  ** - Suppression: doNotEmail, an unsubscribeDate, or a list membership that
  **   is not Subscribed.
  ** - Activities are logged as qbit-crm "Note" activities.
  **
- ** Table names are resolved from the QInstance at call time: the snake_case
- ** name qbit-crm now uses is preferred, falling back to its legacy camelCase
- ** name, so either qbit-crm generation works.
+ ** It uses qbit-crm 0.2.0's crm_* snake_case tables (no fallback to the
+ ** 0.1.0 camelCase names).
  *******************************************************************************/
 public class QbitCrmGateway implements MarketingCrmGateway
 {
@@ -60,16 +59,6 @@ public class QbitCrmGateway implements MarketingCrmGateway
    public static final String ACTIVITY_TABLE        = "crm_activity";
    public static final String ACTIVITY_TYPE_TABLE   = "crm_activity_type";
 
-   ///////////////////////////////////////////////////////////////////////
-   // the names qbit-crm used before it moved to snake_case; still used //
-   // when the instance has the old tables                              //
-   ///////////////////////////////////////////////////////////////////////
-   public static final String LEGACY_CONTACT_TABLE         = "crmContact";
-   public static final String LEGACY_CONSENT_TABLE         = "crmConsentRecord";
-   public static final String LEGACY_LIST_MEMBER_TABLE     = "crmEmailListMember";
-   public static final String LEGACY_FORM_SUBMISSION_TABLE = "crmFormSubmission";
-   public static final String LEGACY_ACTIVITY_TABLE        = "crmActivity";
-   public static final String LEGACY_ACTIVITY_TYPE_TABLE   = "crmActivityType";
 
    static final Integer CONSENT_TYPE_EMAIL       = 1;
    static final Integer CONSENT_STATUS_GRANTED   = 1;
@@ -96,7 +85,7 @@ public class QbitCrmGateway implements MarketingCrmGateway
    public boolean isAvailable()
    {
       QInstance qInstance = QContext.getQInstance();
-      return (qInstance != null && contactTable() != null && consentTable() != null && formSubmissionTable() != null);
+      return (qInstance != null && qInstance.getTable(CONTACT_TABLE) != null && qInstance.getTable(CONSENT_TABLE) != null && qInstance.getTable(FORM_SUBMISSION_TABLE) != null);
    }
 
 
@@ -121,7 +110,7 @@ public class QbitCrmGateway implements MarketingCrmGateway
       else if(recipientScope.startsWith("crm-list:"))
       {
          Integer listId = parseId(recipientScope, "crm-list:");
-         for(QRecord member : MarketingStore.queryBy(listMemberTable(), "emailListId", listId))
+         for(QRecord member : MarketingStore.queryBy(LIST_MEMBER_TABLE, "emailListId", listId))
          {
             Integer contactId = member.getValueInteger("contactId");
             if(contactId == null)
@@ -150,7 +139,7 @@ public class QbitCrmGateway implements MarketingCrmGateway
       String      address     = null;
       if(eligibility.eligible())
       {
-         QRecord contact = MarketingStore.get(contactTable(), contactId);
+         QRecord contact = MarketingStore.get(CONTACT_TABLE, contactId);
          address = contact == null ? null : contact.getValueString("email");
       }
       return (new CrmRecipient(contactId, address, eligibility));
@@ -164,7 +153,7 @@ public class QbitCrmGateway implements MarketingCrmGateway
    @Override
    public Eligibility checkEmailEligibility(Integer contactId) throws QException
    {
-      QRecord contact = MarketingStore.get(contactTable(), contactId);
+      QRecord contact = MarketingStore.get(CONTACT_TABLE, contactId);
       if(contact == null)
       {
          return (Eligibility.no("contact_not_found"));
@@ -182,7 +171,7 @@ public class QbitCrmGateway implements MarketingCrmGateway
          return (Eligibility.no("no_email_address"));
       }
 
-      List<QRecord> consents = MarketingStore.query(consentTable(), new QQueryFilter(
+      List<QRecord> consents = MarketingStore.query(CONSENT_TABLE, new QQueryFilter(
          new QFilterCriteria("contactId", QCriteriaOperator.EQUALS, contactId),
          new QFilterCriteria("consentType", QCriteriaOperator.EQUALS, CONSENT_TYPE_EMAIL)));
       if(consents.isEmpty())
@@ -225,7 +214,7 @@ public class QbitCrmGateway implements MarketingCrmGateway
       {
          filter.addCriteria(new QFilterCriteria("createDate", QCriteriaOperator.GREATER_THAN_OR_EQUALS, since));
       }
-      for(QRecord submission : MarketingStore.query(formSubmissionTable(), filter))
+      for(QRecord submission : MarketingStore.query(FORM_SUBMISSION_TABLE, filter))
       {
          list.add(new CrmFormSubmissionRef(submission.getValueInteger("id"), submission.getValueInteger("contactId"), ValueUtils.getValueAsInstant(submission.getValue("createDate"))));
       }
@@ -240,7 +229,7 @@ public class QbitCrmGateway implements MarketingCrmGateway
    @Override
    public void recordActivity(Integer contactId, String subject, String description) throws QException
    {
-      List<QRecord> types = MarketingStore.queryBy(activityTypeTable(), "name", NOTE_ACTIVITY_TYPE_NAME);
+      List<QRecord> types = MarketingStore.queryBy(ACTIVITY_TYPE_TABLE, "name", NOTE_ACTIVITY_TYPE_NAME);
       if(types.isEmpty())
       {
          throw (new QUserFacingException("The CRM has no \"" + NOTE_ACTIVITY_TYPE_NAME + "\" activity type to log marketing activities with."));
@@ -249,7 +238,7 @@ public class QbitCrmGateway implements MarketingCrmGateway
       //////////////////////////////////////////////////////////////////
       // written with the user's CRM permissions, not Marketing's scope //
       //////////////////////////////////////////////////////////////////
-      com.kingsrook.qqq.backend.core.model.actions.tables.insert.InsertInput insert = new com.kingsrook.qqq.backend.core.model.actions.tables.insert.InsertInput(activityTable());
+      com.kingsrook.qqq.backend.core.model.actions.tables.insert.InsertInput insert = new com.kingsrook.qqq.backend.core.model.actions.tables.insert.InsertInput(ACTIVITY_TABLE);
       insert.withPermissionEnforcement(com.kingsrook.qqq.backend.core.actions.permissions.PermissionEnforcement.ENFORCE);
       insert.withRecord(new QRecord()
          .withValue("activityTypeId", types.get(0).getValueInteger("id"))
@@ -264,86 +253,6 @@ public class QbitCrmGateway implements MarketingCrmGateway
       {
          throw (new QUserFacingException("The CRM refused the activity: " + stored.getErrors().get(0).getMessage()));
       }
-   }
-
-
-
-   /*******************************************************************************
-    ** The contact table's name in the current instance (null if neither naming exists).
-    *******************************************************************************/
-   public static String contactTable()
-   {
-      return (resolve(CONTACT_TABLE, LEGACY_CONTACT_TABLE));
-   }
-
-
-
-   /*******************************************************************************
-    **
-    *******************************************************************************/
-   public static String consentTable()
-   {
-      return (resolve(CONSENT_TABLE, LEGACY_CONSENT_TABLE));
-   }
-
-
-
-   /*******************************************************************************
-    **
-    *******************************************************************************/
-   public static String listMemberTable()
-   {
-      return (resolve(LIST_MEMBER_TABLE, LEGACY_LIST_MEMBER_TABLE));
-   }
-
-
-
-   /*******************************************************************************
-    **
-    *******************************************************************************/
-   public static String formSubmissionTable()
-   {
-      return (resolve(FORM_SUBMISSION_TABLE, LEGACY_FORM_SUBMISSION_TABLE));
-   }
-
-
-
-   /*******************************************************************************
-    **
-    *******************************************************************************/
-   public static String activityTable()
-   {
-      return (resolve(ACTIVITY_TABLE, LEGACY_ACTIVITY_TABLE));
-   }
-
-
-
-   /*******************************************************************************
-    **
-    *******************************************************************************/
-   public static String activityTypeTable()
-   {
-      return (resolve(ACTIVITY_TYPE_TABLE, LEGACY_ACTIVITY_TYPE_TABLE));
-   }
-
-
-
-   /*******************************************************************************
-    ** Prefer the snake_case table, fall back to the legacy one; null if the
-    ** instance has neither.
-    *******************************************************************************/
-   private static String resolve(String name, String legacyName)
-   {
-      QInstance qInstance = QContext.getQInstance();
-      if(qInstance == null)
-      {
-         return (null);
-      }
-      if(qInstance.getTable(name) != null)
-      {
-         return (name);
-      }
-      return (qInstance.getTable(legacyName) != null ? legacyName : null);
    }
 
 
