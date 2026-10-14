@@ -314,6 +314,7 @@ CREATE TABLE IF NOT EXISTS marketing_agent_run (
    model VARCHAR(100),
    requested_by_user_id VARCHAR(100),
    started_at TIMESTAMP,
+   heartbeat_at TIMESTAMP,
    finished_at TIMESTAMP,
    model_calls INTEGER,
    tool_calls INTEGER,

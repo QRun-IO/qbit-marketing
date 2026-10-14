@@ -23,7 +23,7 @@ It lives inside the host QQQ application: its navigation, authentication, permis
 | **Execution** | Durable jobs with idempotency keys, schedules, pause, resume and cancel, and attempts with provider receipts. Failures that certainly did not send are retried with backoff. Ambiguous outcomes are reconciled and never retried blindly. Everything is re-checked at send time (approval, schedule, consent, suppression, channel rules, rate, kill switch). |
 | **Transports** | A complete controlled test transport, and email through the host's QQQ messaging provider. A channel that names a transport is not treated as a working connector unless that transport is registered and usable. |
 | **Measurement** | Delivery, awareness, engagement, activation, repeat use and qualified demand are reported separately. Each metric shows raw events and unique actors. "Not measured" is never shown as 0. Test data is kept apart. |
-| **CRM** | Uses the host CRM's own contacts, organizations, consent, suppression, lists, form submissions and activities through a narrow gateway. A qbit-crm adapter is included. Nothing is copied, and nobody becomes a lead without the campaign's explicit rule. |
+| **CRM** | Uses the host CRM's own contacts, organizations, consent, suppression, lists, form submissions and activities through a narrow gateway. A qbit-crm adapter is included (qbit-crm 0.2.0's `crm_*` tables). Nothing is copied, and nobody becomes a lead without the campaign's explicit rule. |
 | **Agent** | Plans campaigns, drafts and revises content, flags unsupported claims, stale sources and readiness gaps, and analyzes results to recommend the next experiment. It uses narrow typed tools, runs as the requesting user, sees data only as untrusted input, and sees no CRM personal data. Every run is recorded with its steps, provider, model, tokens and cost. It can create drafts and findings; it cannot approve, schedule or send. |
 | **Models** | Interchangeable providers through `qbit-assistant-provider-api`'s `AssistantModelProvider`: OpenAI-compatible endpoints through `qbit-assistant-provider-openai` (added by the host), or a host-supplied provider such as Claude. Tests use a local scripted double. With no provider configured, the agent says so and everything else works. Installing marketing does not install the assistant runtime, tables or routes. |
 
@@ -98,6 +98,12 @@ Set any existing Marketing Policy provider override to `openai-compatible` as we
   - Content: Proposed Publication.
 - **Actions:** every action is a streamed-ETL record action (record input, standard Review and Result summary lines) in the table's or record's Actions menu. None are nav items.
 
+## Help
+
+The help text ships with the code it describes, as a QQQ help bundle at `help/qbit-marketing.yaml` (a classpath resource, layer `QBIT`). It has 346 entries: the Marketing app, every `marketing_*` table and each of its non-trivial fields, every record and table action, every widget (the dashboard widgets and the child lists) and every possible-value source. Each entry has a one-line summary for the tooltip and a few sentences of plain help. Labels, maximum lengths and enum values are `{{...}}` references, so the help does not repeat what the metadata already says.
+
+The bundle is loaded with `HelpBundles.register(qInstance, "help/qbit-marketing.yaml")` once qqq#1198 ships. The producer will register it then; until that core API exists, nothing registers it. `HelpBundleCoverageTest` checks that the bundle is complete, that every key and reference resolves, and that summaries stay short and plain.
+
 ## Email through qbit-email
 
 When the optional [qbit-email](https://github.com/QRun-IO/qbit-email) qbit is produced in the same instance, email channels named `qqq_email` (the starter-data channel) send through it automatically, unless the host registered its own transport under that name. `QqqMessagingEmailTransport` stays the fallback; without qbit-email nothing changes.
@@ -121,7 +127,7 @@ When the optional [qbit-email](https://github.com/QRun-IO/qbit-email) qbit is pr
 | CRM gateway and qbit-crm adapter, explicit lead rules | |
 | Persistence across restart (H2 file, and PostgreSQL in the Voyage host) | |
 
-Scale gaps (single worker per JVM, in-memory rate limits) are listed in [`docs/OPERATIONS.md`](docs/OPERATIONS.md#scale-and-limits).
+Scale gaps (single execution worker per JVM; agent limits are database-counted but still racy across replicas) are listed in [`docs/OPERATIONS.md`](docs/OPERATIONS.md#scale-and-limits).
 
 ## Build
 
