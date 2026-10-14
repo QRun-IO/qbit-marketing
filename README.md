@@ -6,7 +6,7 @@
 > Marketing for QQQ applications: products and their verified evidence, campaigns, content with revision history, exact human approval, controlled execution, honest measurement, and a marketing agent that prepares work but never publishes.
 
 **Status:** 0.1.0, not yet published.
-- Built against QQQ `4.1.0-RC.4`.
+- Built against QQQ `4.1.0-RC.6` with `qbit-build-parent` `2.1.0`.
 - Hosted in QRun-IO/Voyage next to qbit-crm, on a local branch.
 - The real integrations are implemented but unconfigured. See [what is configured](#what-is-implemented-what-is-not-configured).
 
@@ -25,7 +25,7 @@ It lives inside the host QQQ application: its navigation, authentication, permis
 | **Measurement** | Delivery, awareness, engagement, activation, repeat use and qualified demand are reported separately. Each metric shows raw events and unique actors. "Not measured" is never shown as 0. Test data is kept apart. |
 | **CRM** | Uses the host CRM's own contacts, organizations, consent, suppression, lists, form submissions and activities through a narrow gateway. A qbit-crm adapter is included. Nothing is copied, and nobody becomes a lead without the campaign's explicit rule. |
 | **Agent** | Plans campaigns, drafts and revises content, flags unsupported claims, stale sources and readiness gaps, and analyzes results to recommend the next experiment. It uses narrow typed tools, runs as the requesting user, sees data only as untrusted input, and sees no CRM personal data. Every run is recorded with its steps, provider, model, tokens and cost. It can create drafts and findings; it cannot approve, schedule or send. |
-| **Models** | Interchangeable providers through qbit-assistant's `AssistantModelProvider`: Claude (`qbit-assistant-provider-anthropic`), any OpenAI-compatible endpoint (included), and a scripted provider for tests. With no provider configured, the agent says so and everything else works. |
+| **Models** | Interchangeable providers through `qbit-assistant-provider-api`'s `AssistantModelProvider`: OpenAI-compatible endpoints through `qbit-assistant-provider-openai` (included), or a host-supplied provider such as Claude. Tests use a local scripted double. With no provider configured, the agent says so and everything else works. Installing marketing does not install the assistant runtime, tables or routes. |
 
 ## Install
 
@@ -38,14 +38,24 @@ It lives inside the host QQQ application: its navigation, authentication, permis
 ```
 
 ```java
+import com.kingsrook.qbits.assistant.provider.ProviderSettings;
+import com.kingsrook.qbits.assistant.provider.openai.OpenAiCompatibleModelProvider;
+import com.kingsrook.qqq.backend.core.instances.QMetaDataVariableInterpreter;
+
+var provider = new OpenAiCompatibleModelProvider(new ProviderSettings()
+   .withKind("OPENAI_COMPATIBLE")
+   .withBaseUrl("https://api.openai.com/v1")
+   .withApiKey(new QMetaDataVariableInterpreter().interpret("${env.MARKETING_OPENAI_API_KEY}")));
+
 new MarketingQBitProducer().withQBitConfig(new MarketingQBitConfig()
       .withBackendName("rdbms")                                   // where the marketing_* tables live
       .withCrmGateway(new QbitCrmGateway())                       // optional: qbit-crm
       .withSchedulerName("scheduler")                             // optional: runs the execution worker
       .withTransport(new QqqMessagingEmailTransport()             // optional: email via your QQQ messaging provider
          .withMessagingProviderName("email").withFromAddress("news@example.org"))
-      .withModelProvider(AnthropicModelProvider.fromEnvironment()) // optional: only when ANTHROPIC_API_KEY is set
-      .withModel("claude-sonnet-5-5"))
+      .withModelProvider(provider)                               // optional: configure only for agent use
+      .withProviderName("openai-compatible")
+      .withModel("your-model-id"))
    .produce(qInstance);
 ```
 
@@ -55,6 +65,11 @@ Then:
 3. Optionally run **Load Verified Starter Data** from the Marketing Product table's actions.
 
 [`docs/OPERATIONS.md`](docs/OPERATIONS.md) covers every setting, the run-books and the limits.
+
+The provider SPI, pricing and OpenAI-compatible implementation are pinned to `0.1.0-RC.11`.
+Replace imports of marketing's former `agent.provider.OpenAiCompatibleModelProvider` with the published class above and replace its builder with `ProviderSettings`.
+The host resolves the API key reference; `ProviderSettings.withApiKeyEnvName(...)` alone does not resolve it.
+Set any existing Marketing Policy provider override to `openai-compatible` as well. The base URL, key environment variable name and model remain host-configurable; omit the key for a local endpoint that needs none.
 
 ## Permissions
 
@@ -91,7 +106,7 @@ Then:
 | Approval binding, invalidation, separation of duties | Email transport (needs the host's QQQ messaging provider; reports *Not configured* until then, and *Configured* is not *Operational*) |
 | Durable execution, retries, reconciliation, leases | No social, community, blog or CMS connector exists: those channels are posted by hand |
 | Controlled test transport (complete) | No analytics importer: awareness and activation metrics stay *Not measured* until something records outcome events |
-| Agent loop, tools, budgets, limits, run records | QQQ AI tool kernel registration (needs QRun-IO/qqq#1096; the qbit works without it) |
+| Agent loop, tools, budgets, limits, run records; read-tool registration in the QQQ RC.6 AI tool registry | |
 | CRM gateway and qbit-crm adapter, explicit lead rules | |
 | Persistence across restart (H2 file, and PostgreSQL in the Voyage host) | |
 
@@ -104,6 +119,16 @@ Scale gaps (single worker per JVM, in-memory rate limits) are listed in [`docs/O
 ```
 
 Always use the Maven wrapper (Maven 3.9.11); Maven 3.10 cannot read the parent POM. The entities, enums and DDL are generated from one spec: `python -I scripts/generate-model.py .` (commit the output).
+
+Architecture guardrails and strict UI API route checks are enabled. The artifact allow-list preserves the parent's defaults and adds only `qbit-assistant-provider-openai`; the package allow-list also permits the extracted provider SPI and pricing. Parent 2.1.0 matches package prefixes using `prefix + "."`, so the pricing allowance must be `com.kingsrook.qbits.assistant.engine`, not the class name `…engine.ModelPricing`. The API artifact contains only `ModelPricing` in that package; the full assistant artifact remains prohibited.
+
+Until provider `0.1.0-RC.11` is available on Central, verify against the locally installed assistant develop build only with:
+
+```bash
+./mvnw -Dqbit-assistant.version=0.1.0-ARCHLOCAL-SNAPSHOT -Dqbit.guardrails.enforce=false verify
+```
+
+This runs the guardrails in report mode so G7 can report the local SNAPSHOT dependencies. Keep the release version and enforcement enabled in the POM.
 
 ## License
 

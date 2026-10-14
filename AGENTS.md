@@ -46,7 +46,8 @@ Services: `approval.ApprovalService`, `execution.ExecutionService`, `measurement
 ## Dependencies
 
 - Java 21.
-- Parent `com.kingsrook:qbit-build-parent:2.0.0` (qqq 4.0.0). The default-active `qqq-snapshot` profile imports `qqq-bom-pom:4.1.0-RC.4` ahead of it, as in qbit-quick-search (ADR-0007). Remove that activation when the parent moves to 4.1.
+- Parent `com.kingsrook:qbit-build-parent:2.1.0` (qqq 4.0.0), with architecture enforcement and strict UI API routes enabled. The default-active `qqq-snapshot` profile imports `qqq-bom-pom:4.1.0-RC.6` ahead of it, as in qbit-quick-search (ADR-0007). Remove that activation when the parent moves to 4.1.
+- Assistant provider API and OpenAI-compatible provider `0.1.0-RC.11`; no full assistant dependency. For local verification before publication only, use `-Dqbit-assistant.version=0.1.0-ARCHLOCAL-SNAPSHOT -Dqbit.guardrails.enforce=false` and inspect guardrail findings.
 - Tests: JUnit 5, AssertJ.
 
 ## Release

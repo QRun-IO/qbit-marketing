@@ -48,7 +48,7 @@ Nothing in Marketing stores a credential, and every key is read from the host's 
 | Integration | What to provide |
 |---|---|
 | Claude | `ANTHROPIC_API_KEY` (or `AnthropicModelProvider.builder().apiKey(fromSecretStore)`), and a model id such as `claude-sonnet-5-5`. |
-| OpenAI-compatible | A base URL (`https://api.openai.com/v1`, `http://localhost:11434/v1` for Ollama, ...), an API key reference such as `${env.MARKETING_OPENAI_API_KEY}` if the server needs one, and a model id. |
+| OpenAI-compatible | Use `com.kingsrook.qbits.assistant.provider.openai.OpenAiCompatibleModelProvider` from `qbit-assistant-provider-openai` with `ProviderSettings`: a base URL (`https://api.openai.com/v1`, `http://localhost:11434/v1` for Ollama, ...), a resolved key if the server needs one, and a model id in `MarketingQBitConfig.withModel(...)`. Resolve `${env.MARKETING_OPENAI_API_KEY}` with `QMetaDataVariableInterpreter` before `withApiKey(...)`; setting `apiKeyEnvName` alone does not resolve a key. The provider name is `openai-compatible`, including in Marketing Policy overrides. See the [setup example](../README.md#install). |
 | Email | A QQQ messaging provider in the host instance (SMTP or SES), its name, and a from-address. After verifying it end to end, `withVerifiedOperational(true)`. Until then the email transport reports *Configured, not verified* and executions are blocked. |
 
 **Status:** check **Configuration Status** on the Marketing dashboard after any change.
