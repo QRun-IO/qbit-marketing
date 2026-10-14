@@ -21,8 +21,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import com.kingsrook.qbits.marketing.agent.KernelToolRegistration;
+import com.kingsrook.qbits.marketing.agent.tools.MarketingTools;
 import com.kingsrook.qbits.marketing.metadata.MarketingMetaDataBuilder;
 import com.kingsrook.qbits.marketing.security.MarketingPermissions;
+import com.kingsrook.qqq.backend.core.actions.ai.AiToolRegistry;
 import com.kingsrook.qqq.backend.core.model.metadata.QInstance;
 import com.kingsrook.qqq.backend.core.model.metadata.layout.QAppChildMetaData;
 import com.kingsrook.qqq.backend.core.model.metadata.layout.QAppMetaData;
@@ -111,11 +113,16 @@ class MarketingQBitProducerTest extends BaseMarketingTest
 
 
    /*******************************************************************************
-    ** Whether or not the kernel hook is available (absent on QQQ 4.1.0-RC.4), registering no tools registers nothing.
+    ** RC.6 registers the read tools, excludes writes and tolerates repeat registration.
     *******************************************************************************/
    @Test
-   void testKernelHookRegistersNothingWithoutTools()
+   void testKernelHookAvailableOnRc6()
    {
+      assertThat(KernelToolRegistration.isAvailable()).isTrue();
+      assertThat(AiToolRegistry.of(qInstance).getTools()).containsOnlyKeys(
+         MarketingTools.GET_CAMPAIGN_BRIEF, MarketingTools.LIST_PRODUCT_CLAIMS, MarketingTools.LIST_CAMPAIGN_CONTENT,
+         MarketingTools.GET_CAMPAIGN_RESULTS, MarketingTools.LIST_CHANNELS, MarketingTools.LIST_FINDINGS);
+      assertThat(KernelToolRegistration.register(qInstance, MarketingTools.all())).isZero();
       assertThat(KernelToolRegistration.register(qInstance, List.of())).isZero();
    }
 
