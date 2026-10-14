@@ -253,6 +253,13 @@ class EndToEndFlowTest extends BaseMarketingTest
       assertThat(deliveries.get(0).getValueString("body")).as("exactly the approved text").isEqualTo(body);
       assertThat(reload(MarketingApproval.TABLE_NAME, approval.getValueInteger("id")).getValueInteger("status")).isEqualTo(ApprovalStatus.CONSUMED.getId());
       assertThat(reload(MarketingContent.TABLE_NAME, contentId).getValueInteger("status")).isEqualTo(ContentStatus.ACCEPTED.getId());
+      com.kingsrook.qqq.backend.core.model.actions.widgets.RenderWidgetInput proposalInput = new com.kingsrook.qqq.backend.core.model.actions.widgets.RenderWidgetInput()
+         .withWidgetMetaData(com.kingsrook.qqq.backend.core.context.QContext.getQInstance().getWidget(com.kingsrook.qbits.marketing.widgets.MarketingWidgets.CONTENT_PROPOSAL));
+      proposalInput.setQueryParams(new java.util.HashMap<>(java.util.Map.of("id", String.valueOf(contentId))));
+      String proposal = ((com.kingsrook.qqq.backend.core.model.dashboard.widgets.RawHTML) new com.kingsrook.qqq.backend.core.actions.dashboard.RenderWidgetAction()
+         .execute(proposalInput).getWidgetData()).getHtml();
+      assertThat(proposal).as("a used-up approval is not shown as not approved").contains("used by an execution").doesNotContain("Not approved")
+         .containsPattern("[A-Z][a-z]{2} [0-9]{1,2}, [0-9]{4} [0-9]{1,2}:[0-9]{2} [AP]M UTC");
 
       ///////////////////////////////////////////////////////////////////
       // 7. recorded outcomes: the provider acceptance (test data) and //
