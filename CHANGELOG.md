@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The format follows Keep
 ## [0.1.0] - Unreleased
 
 ### Added
+- Product-contingent possible values for editable campaign, claim, finding, metric and outcome-event references.
 - Repository scaffold: build, CI and the repository standard files.
 - **Model:** 18 standard `marketing_*` tables, 21 enum possible-value sources, joins and child lists. The PostgreSQL reference DDL (`docs/ddl/postgres.sql`) and an H2 twin are generated from one spec (`scripts/generate-model.py`).
 - **Products and evidence:**

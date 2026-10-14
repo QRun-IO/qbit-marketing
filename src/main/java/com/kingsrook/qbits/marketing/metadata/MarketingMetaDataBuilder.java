@@ -72,6 +72,9 @@ import com.kingsrook.qqq.backend.core.actions.customizers.TableCustomizers;
 import com.kingsrook.qqq.backend.core.actions.dashboard.widgets.ChildRecordListRenderer;
 import com.kingsrook.qqq.backend.core.exceptions.QException;
 import com.kingsrook.qqq.backend.core.instances.QInstanceEnricher;
+import com.kingsrook.qqq.backend.core.model.actions.tables.query.QCriteriaOperator;
+import com.kingsrook.qqq.backend.core.model.actions.tables.query.QFilterCriteria;
+import com.kingsrook.qqq.backend.core.model.actions.tables.query.QQueryFilter;
 import com.kingsrook.qqq.backend.core.model.data.QRecordEntity;
 import com.kingsrook.qqq.backend.core.model.metadata.code.QCodeReference;
 import com.kingsrook.qqq.backend.core.model.metadata.dashboard.QWidgetMetaData;
@@ -224,6 +227,8 @@ public class MarketingMetaDataBuilder
          tables.put(spec.name(), buildTable(spec));
       }
 
+      addContingentPossibleValues();
+
       ////////////////////////////////////////////////////////////////////////
       // relations: each parent shows its children as lists (owner rule:    //
       // sub-tables are relations and child lists on their parents)        //
@@ -260,6 +265,59 @@ public class MarketingMetaDataBuilder
          addDatesSection(table);
       }
       return (new ArrayList<>(tables.values()));
+   }
+
+
+
+   /*******************************************************************************
+    ** Scope editable foreign keys by product. Content's product is read-only;
+    ** system-written history tables have no editable record forms.
+    *******************************************************************************/
+   private void addContingentPossibleValues()
+   {
+      // Offer only audiences belonging to the selected product.
+      tables.get(MarketingCampaign.TABLE_NAME).getField("audienceId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only evidence sources belonging to the selected product.
+      tables.get(MarketingClaim.TABLE_NAME).getField("sourceId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only campaigns belonging to the selected product.
+      tables.get(MarketingFinding.TABLE_NAME).getField("campaignId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only content belonging to the selected product.
+      tables.get(MarketingFinding.TABLE_NAME).getField("contentId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only claims belonging to the selected product.
+      tables.get(MarketingFinding.TABLE_NAME).getField("claimId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only evidence sources belonging to the selected product.
+      tables.get(MarketingFinding.TABLE_NAME).getField("sourceId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only agent runs belonging to the selected product.
+      tables.get(MarketingFinding.TABLE_NAME).getField("agentRunId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only campaigns belonging to the selected product.
+      tables.get(MarketingMetric.TABLE_NAME).getField("campaignId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only campaigns belonging to the selected product.
+      tables.get(MarketingOutcomeEvent.TABLE_NAME).getField("campaignId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only content belonging to the selected product.
+      tables.get(MarketingOutcomeEvent.TABLE_NAME).getField("contentId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
+
+      // Offer only executions belonging to the selected product.
+      tables.get(MarketingOutcomeEvent.TABLE_NAME).getField("executionId").withPossibleValueSourceFilter(
+         new QQueryFilter(new QFilterCriteria("productId", QCriteriaOperator.EQUALS, "${input.productId}")));
    }
 
 
