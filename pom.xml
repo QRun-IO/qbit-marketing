@@ -105,6 +105,12 @@
          <artifactId>qqq-backend-module-rdbms</artifactId>
          <scope>test</scope>
       </dependency>
+      <!-- tests only: the local demo server (src/test/.../demo/MarketingDemoServer) -->
+      <dependency>
+         <groupId>com.kingsrook.qqq</groupId>
+         <artifactId>qqq-middleware-javalin</artifactId>
+         <scope>test</scope>
+      </dependency>
       <dependency>
          <groupId>com.h2database</groupId>
          <artifactId>h2</artifactId>
