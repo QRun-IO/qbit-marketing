@@ -19,10 +19,13 @@ package com.kingsrook.qbits.marketing.widgets;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import com.kingsrook.qbits.marketing.MarketingRuntime;
 import com.kingsrook.qbits.marketing.MarketingStore;
@@ -66,6 +69,7 @@ import com.kingsrook.qqq.backend.core.model.metadata.dashboard.QWidgetMetaData;
 import com.kingsrook.qqq.backend.core.model.session.QSession;
 import com.kingsrook.qqq.backend.core.model.session.QSystemUserSession;
 import com.kingsrook.qqq.backend.core.utils.StringUtils;
+import com.kingsrook.qqq.backend.core.utils.ValueUtils;
 
 
 /*******************************************************************************
@@ -90,6 +94,8 @@ public final class MarketingWidgets
    public static final String CONFIGURATION    = "marketing_configuration_status";
    public static final String CAMPAIGN_RESULTS = "marketing_campaign_results";
    public static final String CONTENT_PROPOSAL = "marketing_content_proposal";
+
+   private static final DateTimeFormatter WHEN_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a 'UTC'", Locale.US).withZone(ZoneOffset.UTC);
 
    public static final List<String> HOME_WIDGETS = List.of(NEEDS_ATTENTION, CAMPAIGNS, AGENT_ACTIVITY, CONFIGURATION);
 
@@ -197,6 +203,17 @@ public final class MarketingWidgets
 
 
    /*******************************************************************************
+    ** A date-time for people: "Oct 14, 2026 4:53 PM UTC" (empty when null).
+    *******************************************************************************/
+   static String when(Object value)
+   {
+      Instant instant = ValueUtils.getValueAsInstant(value);
+      return (instant == null ? "" : WHEN_FORMAT.format(instant));
+   }
+
+
+
+   /*******************************************************************************
     **
     *******************************************************************************/
    static String escape(String text)
@@ -242,27 +259,27 @@ public final class MarketingWidgets
          for(QRecord r : MarketingStore.query(MarketingContent.TABLE_NAME, new QQueryFilter(new QFilterCriteria("status", QCriteriaOperator.EQUALS, ContentStatus.IN_REVIEW.getId())).withLimit(25)))
          {
             rows.add(row("item", link(MarketingContent.TABLE_NAME, r.getValue("id"), r.getValueString("title")), "what", "Waiting for review (revision " + r.getValueInteger("revisionNumber") + ")",
-               "since", String.valueOf(r.getValue("modifyDate"))));
+               "since", when(r.getValue("modifyDate"))));
          }
          for(QRecord r : MarketingStore.query(MarketingExecution.TABLE_NAME, new QQueryFilter(new QFilterCriteria("status", QCriteriaOperator.IN,
             List.of(ExecutionStatus.BLOCKED.getId(), ExecutionStatus.NEEDS_RECONCILIATION.getId(), ExecutionStatus.FAILED.getId()))).withLimit(25)))
          {
             rows.add(row("item", link(MarketingExecution.TABLE_NAME, r.getValue("id"), "Execution #" + r.getValue("id")),
                "what", ExecutionStatus.getById(r.getValueInteger("status")).getLabel() + ": " + StringUtils.safeTruncate(r.getValueString("statusDetail"), 160, "..."),
-               "since", String.valueOf(r.getValue("modifyDate"))));
+               "since", when(r.getValue("modifyDate"))));
          }
          for(QRecord r : MarketingStore.query(MarketingFinding.TABLE_NAME, new QQueryFilter(
             new QFilterCriteria("status", QCriteriaOperator.EQUALS, FindingStatus.OPEN.getId()),
             new QFilterCriteria("severity", QCriteriaOperator.EQUALS, FindingSeverity.BLOCKER.getId())).withLimit(25)))
          {
-            rows.add(row("item", link(MarketingFinding.TABLE_NAME, r.getValue("id"), r.getValueString("title")), "what", "Open blocker finding", "since", String.valueOf(r.getValue("createDate"))));
+            rows.add(row("item", link(MarketingFinding.TABLE_NAME, r.getValue("id"), r.getValueString("title")), "what", "Open blocker finding", "since", when(r.getValue("createDate"))));
          }
          for(QRecord r : MarketingStore.query(MarketingAgentRun.TABLE_NAME, new QQueryFilter(
             new QFilterCriteria("status", QCriteriaOperator.EQUALS, AgentRunStatus.FAILED.getId()),
             new QFilterCriteria("createDate", QCriteriaOperator.GREATER_THAN, Instant.now().minus(7, ChronoUnit.DAYS))).withLimit(10)))
          {
             rows.add(row("item", link(MarketingAgentRun.TABLE_NAME, r.getValue("id"), "Agent run #" + r.getValue("id")),
-               "what", "Failed: " + StringUtils.safeTruncate(r.getValueString("errorMessage"), 160, "..."), "since", String.valueOf(r.getValue("createDate"))));
+               "what", "Failed: " + StringUtils.safeTruncate(r.getValueString("errorMessage"), 160, "..."), "since", when(r.getValue("createDate"))));
          }
 
          return (new RenderWidgetOutput(table(List.of(column("Item", "item", true), column("What", "what", false), column("Since", "since", false)), rows,
@@ -438,9 +455,25 @@ public final class MarketingWidgets
             new QFilterCriteria("contentId", QCriteriaOperator.EQUALS, contentId),
             new QFilterCriteria("status", QCriteriaOperator.EQUALS, ApprovalStatus.ACTIVE.getId())));
 
-         String approval = active.isEmpty() ? "Not approved."
-            : "Approved by " + escape(active.get(0).getValueString("approvedByUserId")) + " at " + active.get(0).getValue("approvedAt")
+         String approval;
+         if(!active.isEmpty())
+         {
+            approval = "Approved by " + escape(active.get(0).getValueString("approvedByUserId")) + " on " + when(active.get(0).getValue("approvedAt"))
                + (content.getContentHash() != null && content.getContentHash().equals(active.get(0).getValueString("contentHash")) ? " (matches this revision)." : " (does NOT match this revision).");
+         }
+         else
+         {
+            //////////////////////////////////////////////////////////////////////
+            // an approval an execution used up is not "not approved": say so //
+            //////////////////////////////////////////////////////////////////////
+            List<QRecord> consumed = MarketingStore.query(MarketingApproval.TABLE_NAME, new QQueryFilter(
+               new QFilterCriteria("contentId", QCriteriaOperator.EQUALS, contentId),
+               new QFilterCriteria("status", QCriteriaOperator.EQUALS, ApprovalStatus.CONSUMED.getId()),
+               new QFilterCriteria("contentHash", QCriteriaOperator.EQUALS, content.getContentHash())));
+            approval = consumed.isEmpty() ? "Not approved."
+               : "Approved by " + escape(consumed.get(0).getValueString("approvedByUserId")) + " on " + when(consumed.get(0).getValue("approvedAt"))
+                  + ", and used by an execution. Approve again to send this revision again.";
+         }
 
          StringBuilder html = new StringBuilder("<div style=\"max-width:100%;overflow-wrap:anywhere\">");
          html.append("<p><strong>").append(escape(content.getTitle())).append("</strong></p>");
@@ -450,7 +483,7 @@ public final class MarketingWidgets
          item(html, "Call to action", content.getCallToAction());
          item(html, "Destination", content.getDestinationUrl());
          item(html, "Recipients", StringUtils.hasContent(content.getRecipientScope()) ? content.getRecipientScope() : "public (no recipient list)");
-         item(html, "Scheduled for", content.getScheduledFor() == null ? "(not set)" : content.getScheduledFor().toString());
+         item(html, "Scheduled for", content.getScheduledFor() == null ? "(not set)" : when(content.getScheduledFor()));
          item(html, "Revision", content.getRevisionNumber() + " by " + label(AuthorType.getById(content.getAuthorType())));
          item(html, "Content hash", content.getContentHash() == null ? "" : content.getContentHash().substring(0, 12));
          item(html, "Status", label(ContentStatus.getById(content.getStatus())));
