@@ -171,7 +171,7 @@ TABLES = [
    ("MarketingAgentRun", "marketing_agent_run", "A run of the marketing agent: task, status, provider, model usage and outputs.", [
       F("productId", "Fk:MarketingProduct"), F("campaignId", "Fk:MarketingCampaign"), F("contentId", "Fk:MarketingContent"),
       F("task", "Enum:AgentTask", required=True), F("status", "Enum:AgentRunStatus", required=True), F("instructions", "Text"),
-      F("providerName", "String:64"), F("model", "String:100"), F("requestedByUserId", "String:100"), F("startedAt", "Instant"),
+      F("providerName", "String:64"), F("model", "String:100"), F("requestedByUserId", "String:100"), F("startedAt", "Instant"), F("heartbeatAt", "Instant"),
       F("finishedAt", "Instant"), F("modelCalls", "Integer"), F("toolCalls", "Integer"), F("inputTokens", "Long"),
       F("outputTokens", "Long"), F("cacheReadTokens", "Long"), F("costMicros", "Long"), F("draftsCreated", "Integer"),
       F("findingsCreated", "Integer"), F("summary", "Text"), F("outputJson", "Text"), F("errorMessage", "Text")]),
