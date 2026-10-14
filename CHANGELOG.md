@@ -5,9 +5,10 @@ All notable changes to this project are documented here. The format follows Keep
 ## [0.1.0] - Unreleased
 
 ### Changed
+- Switch the optional qbit-email integration to the published `com.kingsrook.qbits.email.api` package in `0.1.0-RC.3` (fixes #13). Preserve MARKETING messages, idempotency keys, execution links and outcome mapping; use typed readiness failures so missing providers or brand postal addresses remain send-time rejections. Upgrade `qbit-build-parent` to `2.1.1` and remove all per-repository guardrail allow-lists.
 - Resolve architecture finding F5 (#9): depend on `qbit-assistant-provider-api` and `qbit-assistant-provider-openai` `0.1.0-RC.11`, with no full assistant dependency, including in tests.
 - Replace the local OpenAI-compatible implementation with the published provider and document `ProviderSettings`, environment-key resolution and provider-name migration. Agent tests use a local scripted double.
-- Upgrade QQQ to `4.1.0-RC.6` and `qbit-build-parent` to `2.1.0`; enable architecture enforcement and strict UI API routes with explicit provider API/artifact allowances.
+- Upgrade QQQ to `4.1.0-RC.6`; enable architecture enforcement and strict UI API routes.
 
 ### Added
 - Product-contingent possible values for editable campaign, claim, finding, metric and outcome-event references.
