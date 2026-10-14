@@ -19,7 +19,6 @@ package com.kingsrook.qbits.marketing.widgets;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -95,7 +94,7 @@ public final class MarketingWidgets
    public static final String CAMPAIGN_RESULTS = "marketing_campaign_results";
    public static final String CONTENT_PROPOSAL = "marketing_content_proposal";
 
-   private static final DateTimeFormatter WHEN_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a 'UTC'", Locale.US).withZone(ZoneOffset.UTC);
+   private static final DateTimeFormatter WHEN_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a z", Locale.US);
 
    public static final List<String> HOME_WIDGETS = List.of(NEEDS_ATTENTION, CAMPAIGNS, AGENT_ACTIVITY, CONFIGURATION);
 
@@ -203,12 +202,14 @@ public final class MarketingWidgets
 
 
    /*******************************************************************************
-    ** A date-time for people: "Oct 14, 2026 4:53 PM UTC" (empty when null).
+    ** A date-time for people, in the user's time zone (the session's, else the
+    ** instance's), as the record screens show it: "Oct 14, 2026 11:53 AM CDT"
+    ** (empty when null).
     *******************************************************************************/
    static String when(Object value)
    {
       Instant instant = ValueUtils.getValueAsInstant(value);
-      return (instant == null ? "" : WHEN_FORMAT.format(instant));
+      return (instant == null ? "" : WHEN_FORMAT.withZone(ValueUtils.getSessionOrInstanceZoneId()).format(instant));
    }
 
 
