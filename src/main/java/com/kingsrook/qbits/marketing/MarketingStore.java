@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import com.kingsrook.qbits.marketing.security.MarketingInternalWrite;
 import com.kingsrook.qqq.backend.core.actions.permissions.CorePermissionEnforcer;
 import com.kingsrook.qqq.backend.core.actions.tables.CountAction;
+import com.kingsrook.qqq.backend.core.actions.tables.DeleteAction;
 import com.kingsrook.qqq.backend.core.actions.tables.GetAction;
 import com.kingsrook.qqq.backend.core.actions.tables.InsertAction;
 import com.kingsrook.qqq.backend.core.actions.tables.QueryAction;
@@ -33,6 +34,8 @@ import com.kingsrook.qqq.backend.core.model.session.QSystemUserSession;
 import com.kingsrook.qqq.backend.core.exceptions.QException;
 import com.kingsrook.qqq.backend.core.exceptions.QUserFacingException;
 import com.kingsrook.qqq.backend.core.model.actions.tables.count.CountInput;
+import com.kingsrook.qqq.backend.core.model.actions.tables.delete.DeleteInput;
+import com.kingsrook.qqq.backend.core.model.actions.tables.delete.DeleteOutput;
 import com.kingsrook.qqq.backend.core.model.actions.tables.get.GetInput;
 import com.kingsrook.qqq.backend.core.model.actions.tables.insert.InsertInput;
 import com.kingsrook.qqq.backend.core.model.actions.tables.insert.InsertOutput;
@@ -167,6 +170,38 @@ public final class MarketingStore
       {
          throw (new QUserFacingException(stored.getErrors().stream().map(e -> e.getMessage()).collect(Collectors.joining("; "))));
       }
+   }
+
+
+
+   /*******************************************************************************
+    ** Delete records by primary key. Errors become exceptions.
+    *******************************************************************************/
+   public static void delete(String tableName, List<Serializable> ids) throws QException
+   {
+      if(ids == null || ids.isEmpty())
+      {
+         return;
+      }
+      DeleteOutput output = new DeleteAction().execute(new DeleteInput(tableName).withPrimaryKeys(ids));
+      if(CollectionUtils.nullSafeHasContents(output.getRecordsWithErrors()))
+      {
+         throw (new QUserFacingException(output.getRecordsWithErrors().get(0).getErrors().stream().map(e -> e.getMessage()).collect(Collectors.joining("; "))));
+      }
+   }
+
+
+
+   /*******************************************************************************
+    ** Delete from a system-written table.
+    *******************************************************************************/
+   public static void deleteInternal(String tableName, List<Serializable> ids) throws QException
+   {
+      MarketingInternalWrite.run(() ->
+      {
+         delete(tableName, ids);
+         return (null);
+      });
    }
 
 

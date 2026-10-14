@@ -54,7 +54,7 @@ class MarketingQBitProducerTest extends BaseMarketingTest
       assertThat(qInstance.getQBits().values().iterator().next().getArtifactId()).isEqualTo("qbit-marketing");
 
       Set<String> tables = qInstance.getTables().keySet();
-      assertThat(tables).hasSize(18).allMatch(t -> t.matches("^marketing_[a-z][a-z0-9_]*$"));
+      assertThat(tables).hasSize(19).allMatch(t -> t.matches("^marketing_[a-z][a-z0-9_]*$"));
       for(QTableMetaData table : qInstance.getTables().values())
       {
          assertThat(table.getPermissionRules().getPermissionBaseName()).startsWith("marketing");

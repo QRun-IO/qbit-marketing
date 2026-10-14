@@ -46,7 +46,7 @@ import static com.kingsrook.qqq.backend.core.logging.LogUtils.logPair;
 /*******************************************************************************
  ** Produces the Marketing QBit into a host application:
  **
- ** - 18 standard tables (marketing_*), their joins, child-list widgets and
+ ** - 19 standard tables (marketing_*), their joins, child-list widgets and
  **   possible-value sources, and the optional product security key type;
  ** - the record actions (streamed ETL) and two table actions;
  ** - the Marketing app, whose home is the Marketing dashboard;
