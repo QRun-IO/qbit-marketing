@@ -24,6 +24,7 @@ import java.util.Map;
 import com.kingsrook.qbits.assistant.engine.ModelPricing;
 import com.kingsrook.qbits.assistant.provider.AssistantModelProvider;
 import com.kingsrook.qbits.marketing.crm.MarketingCrmGateway;
+import com.kingsrook.qbits.marketing.measurement.MarketingOutcomeImporter;
 import com.kingsrook.qbits.marketing.transport.MarketingTransport;
 import com.kingsrook.qqq.backend.core.model.metadata.producers.MetaDataCustomizerInterface;
 import com.kingsrook.qqq.backend.core.model.metadata.QInstance;
@@ -84,6 +85,11 @@ public class MarketingQBitConfig implements QBitConfig
    private Integer                       staleSourceDays = 90;
    private transient MarketingCrmGateway crmGateway;
 
+   /** Sources that are Marketing's own and cannot be an importer's name. */
+   private static final List<String> RESERVED_SOURCES = List.of("marketing", "crm");
+
+   private transient List<MarketingOutcomeImporter> outcomeImporters = new ArrayList<>();
+
 
 
    /*******************************************************************************
@@ -116,6 +122,17 @@ public class MarketingQBitConfig implements QBitConfig
          {
             assertCondition(!names.contains(transport.getName()), "duplicate transport name [" + transport.getName() + "]", errors);
             names.add(transport.getName());
+         }
+      }
+
+      List<String> importerNames = new ArrayList<>();
+      for(MarketingOutcomeImporter importer : outcomeImporters)
+      {
+         if(assertCondition(importer != null && StringUtils.hasContent(importer.getName()), "every outcome importer needs a name", errors))
+         {
+            assertCondition(!importerNames.contains(importer.getName()), "duplicate outcome importer name [" + importer.getName() + "]", errors);
+            assertCondition(!RESERVED_SOURCES.contains(importer.getName()), "outcome importer name [" + importer.getName() + "] is reserved (it is the source of Marketing's own events)", errors);
+            importerNames.add(importer.getName());
          }
       }
    }
@@ -164,6 +181,27 @@ public class MarketingQBitConfig implements QBitConfig
    {
       this.transports.add(transport);
       return (this);
+   }
+
+
+
+   /*******************************************************************************
+    ** Register an outcome importer (run by the Import Outcomes campaign action).
+    *******************************************************************************/
+   public MarketingQBitConfig withOutcomeImporter(MarketingOutcomeImporter importer)
+   {
+      this.outcomeImporters.add(importer);
+      return (this);
+   }
+
+
+
+   /*******************************************************************************
+    ** Getter for outcomeImporters
+    *******************************************************************************/
+   public List<MarketingOutcomeImporter> getOutcomeImporters()
+   {
+      return (this.outcomeImporters);
    }
 
 

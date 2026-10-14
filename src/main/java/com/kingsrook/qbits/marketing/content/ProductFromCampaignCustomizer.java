@@ -17,6 +17,7 @@
 package com.kingsrook.qbits.marketing.content;
 
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,8 +40,8 @@ import com.kingsrook.qqq.backend.core.model.data.QRecord;
 /*******************************************************************************
  ** Sets productId from campaignId on campaign-owned rows (metrics, outcome
  ** events, findings), so the product security lock (when configured) and
- ** product-level reports cover them. Outcome events also get quantity 1 when
- ** none is given.
+ ** product-level reports cover them. Outcome events also get quantity 1, the
+ ** current time and isTestData false when none is given.
  *******************************************************************************/
 public class ProductFromCampaignCustomizer implements TableCustomizerInterface
 {
@@ -60,6 +61,22 @@ public class ProductFromCampaignCustomizer implements TableCustomizerInterface
             {
                record.setValue("quantity", 1);
             }
+         }
+         if("marketing_outcome_event".equals(insertInput.getTableName()))
+         {
+            ////////////////////////////////////////////////////////////////////
+            // an event always has a time (the daily rollup is by its UTC day) //
+            // and is real unless marked as test data                          //
+            ////////////////////////////////////////////////////////////////////
+            if(record.getValue("occurredAt") == null)
+            {
+               record.setValue("occurredAt", Instant.now());
+            }
+            if(record.getValue("isTestData") == null)
+            {
+               record.setValue("isTestData", false);
+            }
+            blankActorToNull(record);
          }
       }
       return (records);
@@ -85,6 +102,18 @@ public class ProductFromCampaignCustomizer implements TableCustomizerInterface
          if(record.getValues().containsKey("campaignId"))
          {
             fill(record);
+         }
+         if("marketing_outcome_event".equals(updateInput.getTableName()))
+         {
+            if(record.getValues().containsKey("occurredAt") && record.getValue("occurredAt") == null)
+            {
+               record.addError(new BadInputStatusMessage("An outcome event needs the time it occurred."));
+            }
+            if(record.getValues().containsKey("isTestData") && record.getValue("isTestData") == null)
+            {
+               record.setValue("isTestData", false);
+            }
+            blankActorToNull(record);
          }
          if(findings)
          {
@@ -122,6 +151,21 @@ public class ProductFromCampaignCustomizer implements TableCustomizerInterface
       if(closes || downgrade)
       {
          record.addError(new BadInputStatusMessage("Closing or downgrading an open blocker finding needs " + MarketingPermissions.APPROVE + "."));
+      }
+   }
+
+
+
+   /*******************************************************************************
+    ** A blank actor key is no actor: store null, so the rollup, the report and
+    ** the backend's distinct count all agree.
+    *******************************************************************************/
+   private static void blankActorToNull(QRecord record)
+   {
+      String actor = record.getValueString("actorKey");
+      if(record.getValues().containsKey("actorKey") && actor != null && actor.isBlank())
+      {
+         record.setValue("actorKey", null);
       }
    }
 

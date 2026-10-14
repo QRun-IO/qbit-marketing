@@ -112,6 +112,7 @@ class ComponentsTest extends BaseMarketingTest
       TableData config = (TableData) render(MarketingWidgets.CONFIGURATION, null).getWidgetData();
       assertThat(config.getRows()).anySatisfy(r -> assertThat(String.valueOf(r.get("status"))).isEqualTo("Not configured"))
          .anySatisfy(r -> assertThat(String.valueOf(r.get("status"))).startsWith("Test only"));
+      assertThat(config.getRows()).anySatisfy(r -> assertThat(String.valueOf(r.get("integration"))).contains("Outcome importer").contains("(none)"));
       TableData campaigns = (TableData) render(MarketingWidgets.CAMPAIGNS, null).getWidgetData();
       assertThat(campaigns.getRows()).hasSize(4);
       assertThat(campaigns.getColumns()).hasSizeLessThanOrEqualTo(3);

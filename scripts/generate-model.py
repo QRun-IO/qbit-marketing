@@ -194,6 +194,10 @@ TABLES = [
       F("executionId", "Fk:MarketingExecution"), F("stage", "Enum:FunnelStage", required=True), F("eventType", "String:100", required=True),
       F("source", "String:100", required=True), F("externalEventId", "String:200", required=True), F("actorKey", "String:200"),
       F("occurredAt", "Instant"), F("quantity", "Integer"), F("isTestData", "Boolean"), F("note", "String:500")]),
+   ("MarketingMetricDaily", "marketing_metric_daily", "A persisted daily rollup of a campaign's outcome events per stage and event type (system-written, recomputable from the raw events).", [
+      F("campaignId", "Fk:MarketingCampaign", required=True), F("productId", "Fk:MarketingProduct"), F("dayUtc", "LocalDate", required=True),
+      F("funnelStage", "Enum:FunnelStage", required=True), F("eventType", "String:100", required=True), F("isTestData", "Boolean", required=True),
+      F("rawCount", "Integer"), F("uniqueActors", "Integer"), F("eventsWithoutActor", "Integer"), F("recomputedAt", "Instant")]),
    ("MarketingPolicy", "marketing_policy", "Runtime switches and limits: agent and execution kill switches, provider, model, budgets, concurrency.", [
       F("name", "String:64", required=True), F("agentEnabled", "Boolean"), F("executionEnabled", "Boolean"),
       F("killSwitchReason", "String:255"), F("providerName", "String:64"), F("model", "String:100"),
@@ -206,6 +210,7 @@ UNIQUES = {
    "marketing_content_revision": [["contentId", "revisionNumber"]],
    "marketing_execution": [["idempotencyKey"]],
    "marketing_outcome_event": [["source", "externalEventId"]],
+   "marketing_metric_daily": [["campaignId", "dayUtc", "funnelStage", "eventType", "isTestData"]],
    "marketing_test_delivery": [["idempotencyKey", "recipientKey"]],
    "marketing_policy": [["name"]],
    "marketing_channel": [["name"]],

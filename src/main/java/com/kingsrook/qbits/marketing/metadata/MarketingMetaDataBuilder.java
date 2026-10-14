@@ -26,6 +26,7 @@ import java.util.Set;
 import com.kingsrook.qbits.marketing.MarketingQBitConfig;
 import com.kingsrook.qbits.marketing.content.MarketingContentCustomizer;
 import com.kingsrook.qbits.marketing.content.ProductFromCampaignCustomizer;
+import com.kingsrook.qbits.marketing.measurement.OutcomeEventRollupCustomizer;
 import com.kingsrook.qbits.marketing.model.MarketingAgentRun;
 import com.kingsrook.qbits.marketing.model.MarketingAgentStep;
 import com.kingsrook.qbits.marketing.model.MarketingApproval;
@@ -40,6 +41,7 @@ import com.kingsrook.qbits.marketing.model.MarketingExecution;
 import com.kingsrook.qbits.marketing.model.MarketingExecutionAttempt;
 import com.kingsrook.qbits.marketing.model.MarketingFinding;
 import com.kingsrook.qbits.marketing.model.MarketingMetric;
+import com.kingsrook.qbits.marketing.model.MarketingMetricDaily;
 import com.kingsrook.qbits.marketing.model.MarketingOutcomeEvent;
 import com.kingsrook.qbits.marketing.model.MarketingPolicy;
 import com.kingsrook.qbits.marketing.model.MarketingProduct;
@@ -108,11 +110,12 @@ import com.kingsrook.qqq.backend.core.utils.StringUtils;
  ** - The nav (the Marketing app) lists only the main tables - products,
  **   campaigns, content, executions, agent runs - and the settings tables.
  **   Sub-tables (audiences, evidence, claims, revisions, approvals, attempts,
- **   test deliveries, agent steps, findings, metrics, outcome events) appear
+ **   test deliveries, agent steps, findings, metrics, outcome events, daily
+ **   results) appear
  **   as child lists on their parents; they stay reachable by URL.
  ** - System-written tables (revisions, approvals, executions, attempts, test
- **   deliveries, agent runs, agent steps) are read-only in the UI and API and
- **   guarded by MarketingInternalWrite.
+ **   deliveries, agent runs, agent steps, daily results) are read-only in the
+ **   UI and API and guarded by MarketingInternalWrite.
  *******************************************************************************/
 public class MarketingMetaDataBuilder
 {
@@ -128,7 +131,7 @@ public class MarketingMetaDataBuilder
    /** Written only by Marketing's services. */
    public static final Set<String> SYSTEM_WRITTEN_TABLE_NAMES = Set.of(MarketingContentRevision.TABLE_NAME, MarketingApproval.TABLE_NAME,
       MarketingExecution.TABLE_NAME, MarketingExecutionAttempt.TABLE_NAME, MarketingTestDelivery.TABLE_NAME,
-      MarketingAgentRun.TABLE_NAME, MarketingAgentStep.TABLE_NAME);
+      MarketingAgentRun.TABLE_NAME, MarketingAgentStep.TABLE_NAME, MarketingMetricDaily.TABLE_NAME);
 
    private final MarketingQBitConfig config;
 
@@ -199,6 +202,8 @@ public class MarketingMetaDataBuilder
             List.of("id", "campaignId", "name", "stage", "eventType", "countMode", "instrumentationStatus", "target"), false),
          new TableSpec(MarketingOutcomeEvent.TABLE_NAME, "Marketing Outcome Event", "insights", MarketingOutcomeEvent.class, "%s %s", List.of("eventType", "externalEventId"),
             List.of("id", "campaignId", "stage", "eventType", "source", "externalEventId", "occurredAt", "isTestData"), false),
+         new TableSpec(MarketingMetricDaily.TABLE_NAME, "Marketing Metric Daily", "calendar_view_day", MarketingMetricDaily.class, "%s %s", List.of("dayUtc", "eventType"),
+            List.of("id", "campaignId", "dayUtc", "funnelStage", "eventType", "isTestData", "rawCount", "uniqueActors", "eventsWithoutActor"), false),
          new TableSpec(MarketingPolicy.TABLE_NAME, "Marketing Policy", "policy", MarketingPolicy.class, "%s", List.of("name"),
             List.of("id", "name", "agentEnabled", "executionEnabled", "providerName", "model"), true)
       ));
@@ -246,6 +251,7 @@ public class MarketingMetaDataBuilder
       child(MarketingCampaign.TABLE_NAME, MarketingFinding.TABLE_NAME, "campaignId", "Findings", false);
       child(MarketingCampaign.TABLE_NAME, MarketingAgentRun.TABLE_NAME, "campaignId", "Agent Runs", false);
       child(MarketingCampaign.TABLE_NAME, MarketingOutcomeEvent.TABLE_NAME, "campaignId", "Outcome Events", true);
+      child(MarketingCampaign.TABLE_NAME, MarketingMetricDaily.TABLE_NAME, "campaignId", "Daily Results", false);
 
       sectionWidget(MarketingContent.TABLE_NAME, MarketingWidgets.CONTENT_PROPOSAL, "Proposed Publication");
       child(MarketingContent.TABLE_NAME, MarketingContentRevision.TABLE_NAME, "contentId", "Revision History", false);
@@ -383,6 +389,7 @@ public class MarketingMetaDataBuilder
          case MarketingContentRevision.TABLE_NAME -> table.withUniqueKey(new UniqueKey("contentId", "revisionNumber"));
          case MarketingExecution.TABLE_NAME -> table.withUniqueKey(new UniqueKey("idempotencyKey"));
          case MarketingOutcomeEvent.TABLE_NAME -> table.withUniqueKey(new UniqueKey("source", "externalEventId"));
+         case MarketingMetricDaily.TABLE_NAME -> table.withUniqueKey(new UniqueKey("campaignId", "dayUtc", "funnelStage", "eventType", "isTestData"));
          case MarketingTestDelivery.TABLE_NAME -> table.withUniqueKey(new UniqueKey("idempotencyKey", "recipientKey"));
          default ->
          {
@@ -415,6 +422,17 @@ public class MarketingMetaDataBuilder
          QCodeReference product = new QCodeReference(ProductFromCampaignCustomizer.class);
          table.withCustomizer(TableCustomizers.PRE_INSERT_RECORD, product);
          table.withCustomizer(TableCustomizers.PRE_UPDATE_RECORD, product);
+      }
+
+      if(MarketingOutcomeEvent.TABLE_NAME.equals(spec.name()))
+      {
+         ////////////////////////////////////////////////////////////////
+         // the daily rollup follows every insert, edit and delete     //
+         ////////////////////////////////////////////////////////////////
+         QCodeReference rollup = new QCodeReference(OutcomeEventRollupCustomizer.class);
+         table.withCustomizer(TableCustomizers.POST_INSERT_RECORD, rollup);
+         table.withCustomizer(TableCustomizers.POST_UPDATE_RECORD, rollup);
+         table.withCustomizer(TableCustomizers.POST_DELETE_RECORD, rollup);
       }
 
       ////////////////////////////////////////////////////////////////////

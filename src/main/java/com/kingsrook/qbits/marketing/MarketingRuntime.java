@@ -30,6 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.kingsrook.qbits.assistant.provider.AssistantModelProvider;
 import com.kingsrook.qbits.marketing.crm.MarketingCrmGateway;
 import com.kingsrook.qbits.marketing.email.QbitEmailTransport;
+import com.kingsrook.qbits.marketing.measurement.MarketingOutcomeImporter;
 import com.kingsrook.qbits.marketing.model.MarketingPolicy;
 import com.kingsrook.qbits.marketing.transport.ControlledTestTransport;
 import com.kingsrook.qbits.marketing.transport.MarketingTransport;
@@ -322,6 +323,17 @@ public class MarketingRuntime implements QSupplementalInstanceMetaData
       {
          list.add(new IntegrationStatus("CRM", gateway.getName(), gateway.isAvailable() ? "Available" : "Not available",
             gateway.isAvailable() ? "Uses the CRM's own contact, consent, list and activity tables." : "The CRM's tables are not in this application."));
+      }
+
+      if(config.getOutcomeImporters().isEmpty())
+      {
+         list.add(new IntegrationStatus("Outcome importer", "(none)", "Not configured",
+            "No importer: outcomes are recorded by hand, through the API or by the CRM import, so other metrics stay Not measured."));
+      }
+      for(MarketingOutcomeImporter importer : config.getOutcomeImporters())
+      {
+         list.add(new IntegrationStatus("Outcome importer", importer.getName(), "Registered (not verified by a live call)",
+            "Runs from Import Outcomes on a campaign; events are deduplicated by source and external id."));
       }
       return (list);
    }

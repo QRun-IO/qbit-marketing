@@ -11,9 +11,11 @@ All notable changes to this project are documented here. The format follows Keep
 - Upgrade QQQ to `4.1.0-RC.6`; enable architecture enforcement and strict UI API routes.
 
 ### Added
+- **Persisted measurement** (issue #4, item 4): the `marketing_metric_daily` sub-table (**Daily Results** on a campaign; system-written, read-only, product-locked) rolls outcome events up per UTC day, stage, event type and test-data flag. `MeasurementRollupService` recomputes the affected campaign-days idempotently after every event insert, update and delete; **Rebuild Results** (campaign record action) rebuilds every day. `MeasurementReport` sums raw counts from the rollup and counts campaign-wide unique actors with a backend `COUNT_DISTINCT`; its output is unchanged. An event insert now defaults `occurredAt` to now and `isTestData` to false, and a blank `actorKey` is stored as null.
+- **Outcome importer SPI:** `MarketingOutcomeImporter`, registered with `MarketingQBitConfig.withOutcomeImporter(...)`, and the **Import Outcomes** campaign action, which stores outcomes through the normal (source, external id) dedupe. The Configuration Status widget lists the importers. No concrete network importer.
 - Product-contingent possible values for editable campaign, claim, finding, metric and outcome-event references.
 - Repository scaffold: build, CI and the repository standard files.
-- **Model:** 18 standard `marketing_*` tables, 21 enum possible-value sources, joins and child lists. The PostgreSQL reference DDL (`docs/ddl/postgres.sql`) and an H2 twin are generated from one spec (`scripts/generate-model.py`).
+- **Model:** 19 standard `marketing_*` tables, 21 enum possible-value sources, joins and child lists. The PostgreSQL reference DDL (`docs/ddl/postgres.sql`) and an H2 twin are generated from one spec (`scripts/generate-model.py`).
 - **Products and evidence:**
   - Briefs, audiences, evidence sources with verification dates, and claims (Released / Planned / Unverified / Disputed).
   - Deterministic **Check Readiness** for products and campaigns.
