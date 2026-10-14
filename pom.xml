@@ -26,8 +26,8 @@
       <!-- provider and the price table come from qbit-assistant; marketing    -->
       <!-- reuses them instead of a second provider abstraction.               -->
       <qbit-assistant.version>0.1.0-RC.2</qbit-assistant.version>
-      <!-- move to the first qbit-email RC -->
-      <qbit-email.version>0.1.0-SNAPSHOT</qbit-email.version>
+      <!-- qbit-email from Maven Central -->
+      <qbit-email.version>0.1.0-RC.1</qbit-email.version>
       <h2.version>2.3.232</h2.version>
    </properties>
 
