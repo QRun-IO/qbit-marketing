@@ -19,8 +19,8 @@ package com.kingsrook.qbits.marketing;
 
 import java.util.List;
 import java.util.Map;
-import com.kingsrook.qbits.assistant.provider.ModelProviderException;
-import com.kingsrook.qbits.assistant.provider.ModelUsage;
+import com.kingsrook.qbits.assistant.spi.ModelProviderException;
+import com.kingsrook.qbits.assistant.spi.ModelUsage;
 import com.kingsrook.qbits.marketing.agent.MarketingAgentService;
 import com.kingsrook.qbits.marketing.agent.tools.MarketingTools;
 import com.kingsrook.qbits.marketing.approval.ApprovalService;
@@ -315,8 +315,8 @@ class AgentAndSecurityTest extends BaseMarketingTest
          {
             throw (new RuntimeException(e));
          }
-         return (new com.kingsrook.qbits.assistant.provider.ModelResponse().withParts(new java.util.ArrayList<>(List.of(
-            com.kingsrook.qbits.assistant.provider.ModelPart.toolUse("t1", MarketingTools.LIST_CHANNELS, Map.of())))).withStopReason("tool_use"));
+         return (new com.kingsrook.qbits.assistant.spi.ModelResponse().withParts(new java.util.ArrayList<>(List.of(
+            com.kingsrook.qbits.assistant.spi.ModelPart.toolUse("t1", MarketingTools.LIST_CHANNELS, Map.of())))).withStopReason("tool_use"));
       });
       MarketingAgentRun cancelled = new MarketingAgentService().run(AgentTask.ANALYZE_RESULTS, campaignId, null, null);
       assertThat(AgentRunStatus.getById(cancelled.getStatus())).isEqualTo(AgentRunStatus.CANCELLED);
