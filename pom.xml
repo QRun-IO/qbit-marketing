@@ -136,6 +136,7 @@
             <directory>src/main/resources</directory>
             <filtering>true</filtering>
             <includes>
+               <include>help/*.yaml</include>
                <include>qbit-marketing.properties</include>
             </includes>
          </resource>
@@ -143,6 +144,7 @@
             <directory>src/main/resources</directory>
             <filtering>false</filtering>
             <excludes>
+               <exclude>help/*.yaml</exclude>
                <exclude>qbit-marketing.properties</exclude>
             </excludes>
          </resource>

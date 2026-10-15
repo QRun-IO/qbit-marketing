@@ -1,5 +1,5 @@
 bundle: qbit-marketing
-version: 1
+version: ${project.version}
 layer: QBIT
 entries:
   - key: app:marketing;slot:help
