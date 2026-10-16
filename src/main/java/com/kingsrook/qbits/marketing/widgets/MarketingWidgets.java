@@ -48,11 +48,14 @@ import com.kingsrook.qbits.marketing.model.enums.ContentStatus;
 import com.kingsrook.qbits.marketing.model.enums.ExecutionStatus;
 import com.kingsrook.qbits.marketing.model.enums.FindingSeverity;
 import com.kingsrook.qbits.marketing.model.enums.FindingStatus;
+import com.kingsrook.qbits.marketing.security.MarketingPermissionChecker;
 import com.kingsrook.qbits.marketing.security.MarketingPermissions;
+import com.kingsrook.qbits.marketing.transport.MarketingTransport;
 import com.kingsrook.qqq.backend.core.actions.ai.output.AiLinkBuilder;
 import com.kingsrook.qqq.backend.core.actions.dashboard.widgets.AbstractWidgetRenderer;
 import com.kingsrook.qqq.backend.core.context.QContext;
 import com.kingsrook.qqq.backend.core.exceptions.QException;
+import com.kingsrook.qqq.backend.core.exceptions.QPermissionDeniedException;
 import com.kingsrook.qqq.backend.core.model.actions.tables.query.QCriteriaOperator;
 import com.kingsrook.qqq.backend.core.model.actions.tables.query.QFilterCriteria;
 import com.kingsrook.qqq.backend.core.model.actions.tables.query.QFilterOrderBy;
@@ -75,15 +78,19 @@ import com.kingsrook.qqq.backend.core.utils.ValueUtils;
  ** The Marketing widgets: the app home dashboard (the one Marketing
  ** overview - other apps only link to it) and two record widgets.
  **
- ** - Home: Needs Attention, Campaigns, Agent Activity, Configuration Status.
+ ** - Home: Needs Attention, Campaigns (business content only).
+ ** - Admin-placeable (not on the home): Agent Activity (model/tool calls and
+ **   tokens) and Configuration Status (provider configuration) are system
+ **   content; a host places ADMIN_WIDGETS on its Admin area. They need
+ **   marketing.admin.read.
  ** - Campaign record: Results (per stage; "Not measured" is never shown as 0).
  ** - Content record: Proposed Publication (the exact text, destination,
  **   recipients and schedule a reviewer approves).
  **
  ** All are full-width tables of at most three columns (or one HTML block),
  ** so they read at every width without inner scrolling. All data is real;
- ** with none, they say so. Renderers require marketing.read and read with
- ** the viewer's record locks.
+ ** with none, they say so. Home widgets require marketing.read (omitted, never
+ ** shown locked, without it) and read with the viewer's record locks.
  *******************************************************************************/
 public final class MarketingWidgets
 {
@@ -96,7 +103,12 @@ public final class MarketingWidgets
 
    private static final DateTimeFormatter WHEN_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a z", Locale.US);
 
-   public static final List<String> HOME_WIDGETS = List.of(NEEDS_ATTENTION, CAMPAIGNS, AGENT_ACTIVITY, CONFIGURATION);
+   public static final List<String> HOME_WIDGETS = List.of(NEEDS_ATTENTION, CAMPAIGNS);
+
+   /////////////////////////////////////////////////////////////////////////
+   // system content: for a host to place on its Admin area, not the home //
+   /////////////////////////////////////////////////////////////////////////
+   public static final List<String> ADMIN_WIDGETS = List.of(AGENT_ACTIVITY, CONFIGURATION);
 
 
 
@@ -115,12 +127,12 @@ public final class MarketingWidgets
    public static List<QWidgetMetaData> buildWidgets()
    {
       return (List.of(
-         widget(NEEDS_ATTENTION, "Needs Attention", WidgetType.TABLE, NeedsAttention.class),
-         widget(CAMPAIGNS, "Campaigns", WidgetType.TABLE, Campaigns.class),
-         widget(AGENT_ACTIVITY, "Agent Activity", WidgetType.TABLE, AgentActivity.class),
-         widget(CONFIGURATION, "Configuration Status", WidgetType.TABLE, Configuration.class),
-         widget(CAMPAIGN_RESULTS, "Results", WidgetType.TABLE, CampaignResults.class),
-         widget(CONTENT_PROPOSAL, "Proposed Publication", WidgetType.HTML, ContentProposal.class)));
+         widget(NEEDS_ATTENTION, "Needs Attention", WidgetType.TABLE, NeedsAttention.class, MarketingPermissions.READ),
+         widget(CAMPAIGNS, "Campaigns", WidgetType.TABLE, Campaigns.class, MarketingPermissions.READ),
+         widget(AGENT_ACTIVITY, "Agent Activity", WidgetType.TABLE, AgentActivity.class, MarketingPermissions.ADMIN_READ),
+         widget(CONFIGURATION, "Configuration Status", WidgetType.TABLE, Configuration.class, MarketingPermissions.ADMIN_READ),
+         widget(CAMPAIGN_RESULTS, "Results", WidgetType.TABLE, CampaignResults.class, MarketingPermissions.READ),
+         widget(CONTENT_PROPOSAL, "Proposed Publication", WidgetType.HTML, ContentProposal.class, MarketingPermissions.READ)));
    }
 
 
@@ -128,7 +140,7 @@ public final class MarketingWidgets
    /*******************************************************************************
     **
     *******************************************************************************/
-   private static QWidgetMetaData widget(String name, String label, WidgetType type, Class<? extends AbstractWidgetRenderer> renderer)
+   private static QWidgetMetaData widget(String name, String label, WidgetType type, Class<? extends AbstractWidgetRenderer> renderer, String permission)
    {
       return (new QWidgetMetaData()
          .withName(name)
@@ -136,7 +148,7 @@ public final class MarketingWidgets
          .withType(type.getType())
          .withGridColumns(12)
          .withIsCard(true)
-         .withPermissionRules(MarketingPermissions.hasAccessRules(MarketingPermissions.BASE))
+         .withPermissionRules(MarketingPermissionChecker.rules(permission))
          .withCodeReference(new QCodeReference(renderer)));
    }
 
@@ -148,15 +160,25 @@ public final class MarketingWidgets
    abstract static class Base extends AbstractWidgetRenderer
    {
       /*******************************************************************************
+       ** The permission this widget needs (rendering is refused without it, behind
+       ** the widget's own rules: no "you need ..." text is ever returned).
+       *******************************************************************************/
+      String requiredPermission()
+      {
+         return (MarketingPermissions.READ);
+      }
+
+
+
+      /*******************************************************************************
        **
        *******************************************************************************/
       @Override
       public RenderWidgetOutput render(RenderWidgetInput input) throws QException
       {
-         QSession session = QContext.getQSession();
-         if(!(session instanceof QSystemUserSession) && (session == null || !session.hasPermission(MarketingPermissions.READ)))
+         if(!MarketingPermissions.has(requiredPermission()))
          {
-            return (new RenderWidgetOutput(new RawHTML(null, "<p>You need " + MarketingPermissions.READ + " to see marketing data.</p>")));
+            throw (new QPermissionDeniedException("Permission denied."));
          }
          return (renderFor(input));
       }
@@ -283,8 +305,32 @@ public final class MarketingWidgets
                "what", "Failed: " + StringUtils.safeTruncate(r.getValueString("errorMessage"), 160, "..."), "since", when(r.getValue("createDate"))));
          }
 
+         ///////////////////////////////////////////////////////////////////////////////////
+         // a channel that cannot send: said in business words (the provider detail is in //
+         // the admin-only Configuration Status widget)                                    //
+         ///////////////////////////////////////////////////////////////////////////////////
+         for(QRecord r : MarketingStore.query(MarketingChannel.TABLE_NAME, new QQueryFilter(new QFilterCriteria("isActive", QCriteriaOperator.EQUALS, true)).withOrderBy(new QFilterOrderBy("id")).withLimit(50)))
+         {
+            if(StringUtils.hasContent(r.getValueString("transportName")) && !canSend(r.getValueString("transportName")))
+            {
+               rows.add(row("item", link(MarketingChannel.TABLE_NAME, r.getValue("id"), r.getValueString("name")), "what", "Sends on " + r.getValueString("name") + " are paused - ask an admin",
+                  "since", ""));
+            }
+         }
+
          return (new RenderWidgetOutput(table(List.of(column("Item", "item", true), column("What", "what", false), column("Since", "since", false)), rows,
             "Nothing needs attention.")));
+      }
+
+
+
+      /*******************************************************************************
+       ** Can the named transport send (registered, and operational or test-only)?
+       *******************************************************************************/
+      private static boolean canSend(String transportName) throws QException
+      {
+         MarketingTransport transport = MarketingRuntime.current().getTransport(transportName);
+         return (transport != null && transport.getStatus().isUsable());
       }
    }
 
@@ -339,6 +385,17 @@ public final class MarketingWidgets
    public static class AgentActivity extends Base
    {
       /*******************************************************************************
+       ** System content: marketing.admin.read.
+       *******************************************************************************/
+      @Override
+      String requiredPermission()
+      {
+         return (MarketingPermissions.ADMIN_READ);
+      }
+
+
+
+      /*******************************************************************************
        **
        *******************************************************************************/
       @Override
@@ -379,6 +436,17 @@ public final class MarketingWidgets
     *******************************************************************************/
    public static class Configuration extends Base
    {
+      /*******************************************************************************
+       ** System content: marketing.admin.read.
+       *******************************************************************************/
+      @Override
+      String requiredPermission()
+      {
+         return (MarketingPermissions.ADMIN_READ);
+      }
+
+
+
       /*******************************************************************************
        **
        *******************************************************************************/
