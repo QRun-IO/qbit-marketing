@@ -29,13 +29,16 @@ import com.kingsrook.qbits.marketing.model.MarketingContent;
 import com.kingsrook.qbits.marketing.model.MarketingExecution;
 import com.kingsrook.qbits.marketing.model.MarketingFinding;
 import com.kingsrook.qbits.marketing.model.MarketingProduct;
+import com.kingsrook.qbits.marketing.model.enums.AiContentPolicy;
 import com.kingsrook.qbits.marketing.model.enums.CampaignGoal;
+import com.kingsrook.qbits.marketing.model.enums.ChannelType;
 import com.kingsrook.qbits.marketing.model.enums.ClaimStatus;
 import com.kingsrook.qbits.marketing.model.enums.FindingSeverity;
 import com.kingsrook.qbits.marketing.model.enums.FindingStatus;
 import com.kingsrook.qbits.marketing.model.enums.FindingType;
 import com.kingsrook.qbits.marketing.processes.MarketingActions;
 import com.kingsrook.qbits.marketing.readiness.ReadinessChecker;
+import com.kingsrook.qbits.marketing.security.MarketingPermissions;
 import com.kingsrook.qbits.marketing.seed.MarketingStarterData;
 import com.kingsrook.qbits.marketing.transport.MarketingTransport;
 import com.kingsrook.qbits.marketing.transport.QqqMessagingEmailTransport;
@@ -49,8 +52,11 @@ import com.kingsrook.qqq.backend.core.actions.ai.tools.AiToolContext;
 import com.kingsrook.qqq.backend.core.actions.ai.tools.AiToolInput;
 import com.kingsrook.qqq.backend.core.actions.dashboard.RenderWidgetAction;
 import com.kingsrook.qqq.backend.core.actions.processes.QProcessCallbackFactory;
+import com.kingsrook.qqq.backend.core.actions.permissions.PermissionsHelper;
 import com.kingsrook.qqq.backend.core.actions.processes.RunProcessAction;
 import com.kingsrook.qqq.backend.core.exceptions.QException;
+import com.kingsrook.qqq.backend.core.exceptions.QPermissionDeniedException;
+import com.kingsrook.qqq.backend.core.utils.CollectionUtils;
 import com.kingsrook.qqq.backend.core.model.actions.processes.ProcessSummaryLine;
 import com.kingsrook.qqq.backend.core.model.actions.processes.RunProcessInput;
 import com.kingsrook.qqq.backend.core.model.actions.processes.RunProcessOutput;
@@ -64,6 +70,7 @@ import com.kingsrook.qqq.backend.core.model.dashboard.widgets.TableData;
 import com.kingsrook.qqq.backend.core.model.data.QRecord;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 
 /*******************************************************************************
@@ -117,7 +124,11 @@ class ComponentsTest extends BaseMarketingTest
       assertThat(campaigns.getRows()).hasSize(4);
       assertThat(campaigns.getColumns()).hasSizeLessThanOrEqualTo(3);
       assertThat(((TableData) render(MarketingWidgets.AGENT_ACTIVITY, null).getWidgetData()).getNoRowsFoundHTML()).contains("not run yet");
-      assertThat(((TableData) render(MarketingWidgets.NEEDS_ATTENTION, null).getWidgetData()).getRows()).isEmpty();
+      //////////////////////////////////////////////////////////////////////////////////////////
+      // the starter email channel's transport is configured but not verified: sends paused //
+      //////////////////////////////////////////////////////////////////////////////////////////
+      assertThat(((TableData) render(MarketingWidgets.NEEDS_ATTENTION, null).getWidgetData()).getRows())
+         .singleElement().satisfies(r -> assertThat(String.valueOf(r.get("what"))).endsWith("are paused - ask an admin"));
 
       TableData results = (TableData) render(MarketingWidgets.CAMPAIGN_RESULTS, campaignId).getWidgetData();
       assertThat(results.getRows()).anySatisfy(r -> assertThat(String.valueOf(r.get("result"))).startsWith("0 unique actors"));
@@ -127,8 +138,81 @@ class ComponentsTest extends BaseMarketingTest
       RawHTML proposal  = (RawHTML) render(MarketingWidgets.CONTENT_PROPOSAL, contentId).getWidgetData();
       assertThat(proposal.getHtml()).contains("&lt;script&gt;").doesNotContain("<script>").contains("Not approved");
 
-      as(user("no-read", com.kingsrook.qbits.marketing.security.MarketingPermissions.APP_ACCESS));
-      assertThat(((RawHTML) render(MarketingWidgets.CAMPAIGNS, null).getWidgetData()).getHtml()).contains("marketing.read");
+   }
+
+
+
+   /*******************************************************************************
+    ** The business home lists only business widgets: no configuration status
+    ** and no agent activity (token and model usage), which are admin-placeable.
+    *******************************************************************************/
+   @Test
+   void testHomeHasNoSystemWidgets()
+   {
+      List<String> home = qInstance.getApp("marketing").getWidgets();
+      assertThat(home).containsExactly(MarketingWidgets.NEEDS_ATTENTION, MarketingWidgets.CAMPAIGNS)
+         .doesNotContain(MarketingWidgets.CONFIGURATION, MarketingWidgets.AGENT_ACTIVITY);
+      assertThat(MarketingWidgets.ADMIN_WIDGETS).containsExactly(MarketingWidgets.AGENT_ACTIVITY, MarketingWidgets.CONFIGURATION);
+      assertThat(qInstance.getWidget(MarketingWidgets.CONFIGURATION)).isNotNull();
+      assertThat(qInstance.getWidget(MarketingWidgets.AGENT_ACTIVITY)).isNotNull();
+   }
+
+
+
+   /*******************************************************************************
+    ** App access without marketing.read: every read-requiring widget is omitted
+    ** (no permission) and never renders a "You need ..." shell. Admins still
+    ** get the moved widgets; read-only users do not.
+    *******************************************************************************/
+   @Test
+   void testWidgetsAreOmittedWithoutRead() throws QException
+   {
+      List<String> readWidgets = List.of(MarketingWidgets.NEEDS_ATTENTION, MarketingWidgets.CAMPAIGNS, MarketingWidgets.CAMPAIGN_RESULTS, MarketingWidgets.CONTENT_PROPOSAL);
+      List<String> adminWidgets = MarketingWidgets.ADMIN_WIDGETS;
+
+      as(user("no-read", MarketingPermissions.APP_ACCESS));
+      for(String name : CollectionUtils.mergeLists(readWidgets, adminWidgets))
+      {
+         assertThat(PermissionsHelper.hasWidgetPermission(new RenderWidgetInput(), name)).as(name).isFalse();
+         assertThatThrownBy(() -> render(name, null)).as(name).isInstanceOf(QPermissionDeniedException.class);
+      }
+
+      as(user("reader", MarketingPermissions.APP_ACCESS, MarketingPermissions.READ));
+      for(String name : readWidgets)
+      {
+         assertThat(PermissionsHelper.hasWidgetPermission(new RenderWidgetInput(), name)).as(name).isTrue();
+      }
+      for(String name : adminWidgets)
+      {
+         assertThat(PermissionsHelper.hasWidgetPermission(new RenderWidgetInput(), name)).as(name).isFalse();
+      }
+
+      as(admin());
+      for(String name : adminWidgets)
+      {
+         assertThat(PermissionsHelper.hasWidgetPermission(new RenderWidgetInput(), name)).as(name).isTrue();
+         assertThat(render(name, null).getWidgetData()).as(name).isInstanceOf(TableData.class);
+      }
+   }
+
+
+
+   /*******************************************************************************
+    ** A channel that cannot send adds one business-worded row linking to the
+    ** channel; nothing when every channel can send.
+    *******************************************************************************/
+   @Test
+   void testNeedsAttentionSaysWhenAChannelCannotSend() throws QException
+   {
+      testChannel();
+      assertThat(((TableData) render(MarketingWidgets.NEEDS_ATTENTION, null).getWidgetData()).getRows()).isEmpty();
+
+      Integer blocked = channel("Newsletter", ChannelType.TEST_SINK, "no-such-transport", AiContentPolicy.ALLOWED, true);
+      List<Map<String, Object>> rows = ((TableData) render(MarketingWidgets.NEEDS_ATTENTION, null).getWidgetData()).getRows();
+      assertThat(rows).hasSize(1);
+      assertThat(String.valueOf(rows.get(0).get("what"))).isEqualTo("Sends on Newsletter are paused - ask an admin");
+      assertThat(String.valueOf(rows.get(0).get("item"))).contains("marketing_channel").contains(String.valueOf(blocked)).contains("Newsletter");
+      assertThat(String.valueOf(rows.get(0))).doesNotContain("transport").doesNotContain("Not configured");
    }
 
 
