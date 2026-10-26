@@ -27,7 +27,7 @@
       <qbit.guardrails.enforce>true</qbit.guardrails.enforce>
       <qbit.guardrails.strictUiApiRoutes>true</qbit.guardrails.strictUiApiRoutes>
       <qbit-email.version>0.1.0-RC.3</qbit-email.version>
-      <h2.version>2.3.232</h2.version>
+      <h2.version>2.5.252</h2.version>
    </properties>
 
    <parent>
